@@ -4,6 +4,11 @@
 [![tools](https://img.shields.io/badge/tools-146-green)]()
 [![skills](https://img.shields.io/badge/workflow_skills-8-orange)]()
 [![license](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](./LICENSE)
+[![site](https://img.shields.io/badge/demo-qcc--agent.pages.dev-1a3d2e)](https://qcc-agent.pages.dev)
+
+[![qcc landing page](./docs/screenshot-hero.png)](https://qcc-agent.pages.dev)
+
+> 🌐 **在线 Demo**:[qcc-agent.pages.dev](https://qcc-agent.pages.dev) — 项目落地页(8 个 skill 详解 + 4 种接入运行时 + 完整架构 + 背景文章) · 点上面截图直接访问
 
 把 [agent.qcc.com](https://agent.qcc.com/guide) 提供的 6 个 MCP Streamable HTTP server(146 个 tool)封装成 **Python / TypeScript 客户端 + 8 个工作流 skill**,适用于 KYB / 尽调 / 投后监控 / 供应商准入等场景,支持四种接入形态:
 
