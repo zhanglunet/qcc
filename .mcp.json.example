@@ -1,0 +1,47 @@
+{
+  "_comment": "Copy to .mcp.json and replace ${QCC_API_KEY} with your raw token, or use a runtime that supports env-var substitution.",
+  "mcpServers": {
+    "qcc-company": {
+      "type": "http",
+      "url": "https://agent.qcc.com/mcp/company/stream",
+      "headers": {
+        "Authorization": "Bearer ${QCC_API_KEY}"
+      }
+    },
+    "qcc-risk": {
+      "type": "http",
+      "url": "https://agent.qcc.com/mcp/risk/stream",
+      "headers": {
+        "Authorization": "Bearer ${QCC_API_KEY}"
+      }
+    },
+    "qcc-ipr": {
+      "type": "http",
+      "url": "https://agent.qcc.com/mcp/ipr/stream",
+      "headers": {
+        "Authorization": "Bearer ${QCC_API_KEY}"
+      }
+    },
+    "qcc-operation": {
+      "type": "http",
+      "url": "https://agent.qcc.com/mcp/operation/stream",
+      "headers": {
+        "Authorization": "Bearer ${QCC_API_KEY}"
+      }
+    },
+    "qcc-executive": {
+      "type": "http",
+      "url": "https://agent.qcc.com/mcp/executive/stream",
+      "headers": {
+        "Authorization": "Bearer ${QCC_API_KEY}"
+      }
+    },
+    "qcc-history": {
+      "type": "http",
+      "url": "https://agent.qcc.com/mcp/history/stream",
+      "headers": {
+        "Authorization": "Bearer ${QCC_API_KEY}"
+      }
+    }
+  }
+}

@@ -1,0 +1,90 @@
+name: qcc-ownership-trace
+version: 0.1.0
+display_name: 企查查股权穿透
+display_name_en: QCC ownership / control / UBO trace
+description: |
+  聚合:实际控制人 / 受益所有人 (UBO, 25% AML) / 一层股东 / 对外投资 / 工商变更。
+  AML 合规 / 关联方识别 / M&A 标的实控人确认 / 集团股权梳理 / 股东退出监测。
+description_en: |
+  Ownership penetration workflow: actual controller, AML 25%-rule UBO, direct
+  shareholders, external investments, change records. For AML/KYB, related-party
+  mapping, M&A target verification, group-structure analysis.
+
+triggers:
+  - "实控人是谁"
+  - "穿透股权"
+  - "查受益所有人"
+  - "对外投资了哪些"
+  - "股东结构"
+  - "股权变更"
+  - "谁拿了多少股"
+  - "UBO"
+  - "AML 穿透"
+
+input:
+  type: object
+  properties:
+    company:
+      type: string
+    flag_thresholds:
+      type: object
+      properties:
+        shareholder_change_pct:
+          type: number
+          default: 10
+          description: 触发"近期股权异动"告警的阈值(%)
+  required: [company]
+
+output:
+  type: object
+  properties:
+    controller: {type: object}
+    ubo: {type: array}
+    shareholders: {type: array}
+    investments: {type: array}
+    changes: {type: array}
+    risk_flags: {type: array, items: {type: string}}
+
+flow:
+  - id: anchor
+    skill: qcc-anchor
+    args: {query: "{{input.company}}"}
+    save_as: anchor
+    skip_if: "uscc_pattern_matched({{input.company}})"
+
+  - id: controller
+    tool: qcc-company:get_actual_controller
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: trace
+  - id: ubo
+    tool: qcc-company:get_beneficial_owners
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: trace
+  - id: shareholders
+    tool: qcc-company:get_shareholder_info
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: trace
+  - id: investments
+    tool: qcc-company:get_external_investments
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: trace
+  - id: changes
+    tool: qcc-company:get_change_records
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: trace
+
+  - id: flag_risks
+    type: post_process
+    rules:
+      - condition: "any(change.type == '股东变更' and within_months(change.date, 12) and change.delta_pct >= input.flag_thresholds.shareholder_change_pct)"
+        flag: "近 12 个月股东大变(整体退出 ≥ {{input.flag_thresholds.shareholder_change_pct}}%)"
+      - condition: "controller.name != registration.legal_rep"
+        flag: "实控人与法定代表人不一致 — 影子控制可能"
+      - condition: "any(inv.target matches /金融科技|支付|小贷|典当|融资租赁/)"
+        flag: "对外投资含金融牌照主体 — 另查监管"
+
+mcp_servers:
+  - qcc-company
+
+quota_hint: 5 calls (+1 if anchor needed)
+data_freshness: T+0

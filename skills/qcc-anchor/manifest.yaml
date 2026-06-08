@@ -1,0 +1,65 @@
+name: qcc-anchor
+version: 0.1.0
+display_name: 企查查实体锚定
+display_name_en: QCC entity anchor
+description: |
+  把用户输入(企业名 / 简称 / 品牌名 / 股票简称)解析成唯一 USCC。
+  其他 qcc-* skill 的强制前置。
+description_en: |
+  Resolve a fuzzy company name / brand / short name / stock symbol to a unique 18-char
+  Unified Social Credit Code (USCC). Required pre-step for every other qcc-* skill.
+
+triggers:
+  - "锁定主体"
+  - "确认公司"
+  - "这家公司全称"
+  - "找一下 XXX 公司"
+  - "anchor entity"
+
+skip_when:
+  - user_provides_uscc: '^[0-9A-HJ-NPQRTUWXY]{18}$'
+
+input:
+  type: object
+  properties:
+    query:
+      type: string
+      description: 企业名 / 简称 / 品牌名 / 股票简称
+  required: [query]
+
+output:
+  type: object
+  properties:
+    anchor_status:
+      type: string
+      enum: [unique, multi_candidate, no_match]
+    uscc:
+      type: string
+      description: 18-char Unified Social Credit Code (only when unique)
+    canonical_name:
+      type: string
+    candidates:
+      type: array
+      items:
+        type: object
+        properties:
+          name: {type: string}
+          uscc: {type: string}
+
+flow:
+  - id: query
+    tool: qcc-company:get_company_by_query
+    args:
+      searchKey: "{{input.query}}"
+    save_as: query_result
+    on_multi_candidate:
+      action: prompt_user_to_select
+      list_from: "{{query_result.候选清单}}"
+    on_no_match:
+      action: return_no_match
+
+mcp_servers:
+  - qcc-company
+
+quota_hint: 1 call (2 if verify is invoked)
+data_freshness: T+0

@@ -1,0 +1,78 @@
+name: qcc-ipr-portfolio
+version: 0.1.0
+display_name: 企查查知产+数字资产清单
+display_name_en: QCC IPR portfolio & digital footprint
+description: |
+  聚合:专利(国内/国际)/ 商标 / 著作权 / 集成电路 / 知产质押 / 标准 / 商业特许 /
+  ICP / App / 小程序 / 网店 / 公众号 / 微博 / 抖音 / 快手。
+description_en: |
+  IPR + digital asset inventory: patents (CN + intl), trademarks, copyrights,
+  IC layouts, IPR pledges, standards, franchises, ICP, apps, mini-programs,
+  online stores, official accounts (WeChat / Weibo / Douyin / Kuaishou).
+
+triggers:
+  - "...有多少专利"
+  - "查一下商标"
+  - "知产资产"
+  - "数字资产清单"
+  - "自媒体矩阵"
+  - "ICP 备案"
+  - "...的小程序"
+  - "...的公众号"
+
+input:
+  type: object
+  properties:
+    company:
+      type: string
+    scope:
+      type: string
+      enum: [ip_only, digital_only, all]
+      default: all
+  required: [company]
+
+output:
+  type: object
+  properties:
+    ip_core: {type: object}
+    standards: {type: object}
+    franchise: {type: object}
+    digital: {type: object}
+    flags: {type: array}
+
+flow:
+  - id: anchor
+    skill: qcc-anchor
+    args: {query: "{{input.company}}"}
+    save_as: anchor
+    skip_if: "uscc_pattern_matched({{input.company}})"
+
+  # IP core
+  - {id: patent,      tool: qcc-ipr:get_patent_info,                args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: ip, skip_if: "input.scope == 'digital_only'"}
+  - {id: intl_patent, tool: qcc-ipr:get_international_patent,       args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: ip, skip_if: "input.scope == 'digital_only'"}
+  - {id: ic_layout,   tool: qcc-ipr:get_integrated_circuit_layout,  args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: ip, skip_if: "input.scope == 'digital_only'"}
+  - {id: trademark,   tool: qcc-ipr:get_trademark_info,             args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: ip, skip_if: "input.scope == 'digital_only'"}
+  - {id: tm_document, tool: qcc-ipr:get_trademark_document,         args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: ip, skip_if: "input.scope == 'digital_only'"}
+  - {id: copyright,   tool: qcc-ipr:get_copyright_work_info,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: ip, skip_if: "input.scope == 'digital_only'"}
+  - {id: sw_copy,     tool: qcc-ipr:get_software_copyright_info,    args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: ip, skip_if: "input.scope == 'digital_only'"}
+  - {id: ipr_pledge,  tool: qcc-ipr:get_ipr_pledge,                 args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: ip, skip_if: "input.scope == 'digital_only'"}
+
+  # Standards / franchise
+  - {id: standard,    tool: qcc-ipr:get_standard_info,              args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: aux, skip_if: "input.scope == 'digital_only'"}
+  - {id: franchise,   tool: qcc-ipr:get_commercial_franchise,       args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: aux, skip_if: "input.scope == 'digital_only'"}
+
+  # Digital
+  - {id: icp,         tool: qcc-ipr:get_internet_service_info,      args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: digital, skip_if: "input.scope == 'ip_only'"}
+  - {id: app,         tool: qcc-ipr:get_app_info,                   args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: digital, skip_if: "input.scope == 'ip_only'"}
+  - {id: mini_prog,   tool: qcc-ipr:get_mini_program,               args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: digital, skip_if: "input.scope == 'ip_only'"}
+  - {id: online_st,   tool: qcc-ipr:get_online_store,               args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: digital, skip_if: "input.scope == 'ip_only'"}
+  - {id: wechat_oa,   tool: qcc-ipr:get_wechat_official_account,    args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: digital, skip_if: "input.scope == 'ip_only'"}
+  - {id: weibo,       tool: qcc-ipr:get_weibo_account,              args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: digital, skip_if: "input.scope == 'ip_only'"}
+  - {id: douyin,      tool: qcc-ipr:get_douyin_account,             args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: digital, skip_if: "input.scope == 'ip_only'"}
+  - {id: kuaishou,    tool: qcc-ipr:get_kuaishou_account,           args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: digital, skip_if: "input.scope == 'ip_only'"}
+
+mcp_servers:
+  - qcc-ipr
+
+quota_hint: 18 calls (10 if ip_only, 8 if digital_only)
+data_freshness: T+0

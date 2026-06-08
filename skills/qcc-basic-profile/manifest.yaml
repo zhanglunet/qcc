@@ -1,0 +1,87 @@
+name: qcc-basic-profile
+version: 0.1.0
+display_name: 企查查工商基础摘要
+display_name_en: QCC basic company profile
+description: |
+  一次性拉齐:登记信息 / 简介 / 联系方式 / 主要人员 / 税务 / 分支 / 上市 / 年报。
+  KYB 初步 / 立项尽调前置 / 法务对接资料 / 合同主体校验。
+description_en: |
+  One-shot business profile aggregation: registration, summary, contacts, personnel,
+  tax & invoice info, branches, listing status, annual reports. For KYB onboarding,
+  pre-DD, legal-counterparty preparation, contract-subject verification.
+
+triggers:
+  - "查...的工商信息"
+  - "做...的基础尽调"
+  - "拉 KYB 摘要"
+  - "公司基本信息"
+  - "...的法定代表人是谁"
+  - "...的注册资本"
+
+input:
+  type: object
+  properties:
+    company:
+      type: string
+      description: 企业名 / 简称 / USCC(如果不是 USCC,自动先调 qcc-anchor)
+  required: [company]
+
+output:
+  type: object
+  properties:
+    basic_info: {type: object}
+    profile: {type: object}
+    addresses: {type: object}
+    contacts: {type: object}
+    key_people: {type: array}
+    tax: {type: object}
+    branches: {type: object}
+    listing: {type: [object, "null"]}
+    annual: {type: object}
+
+flow:
+  - id: anchor
+    skill: qcc-anchor
+    args:
+      query: "{{input.company}}"
+    save_as: anchor
+    skip_if: "uscc_pattern_matched({{input.company}})"
+
+  - id: registration
+    tool: qcc-company:get_company_registration_info
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: profile
+  - id: company_profile
+    tool: qcc-company:get_company_profile
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: profile
+  - id: contact
+    tool: qcc-company:get_contact_info
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: profile
+  - id: personnel
+    tool: qcc-company:get_key_personnel
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: profile
+  - id: tax
+    tool: qcc-company:get_tax_invoice_info
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: profile
+  - id: branches
+    tool: qcc-company:get_branches
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: profile
+  - id: listing
+    tool: qcc-company:get_listing_info
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: profile
+  - id: annual_reports
+    tool: qcc-company:get_annual_reports
+    args: {searchKey: "{{anchor.uscc || input.company}}"}
+    parallel_group: profile
+
+mcp_servers:
+  - qcc-company
+
+quota_hint: 8 calls (+1 if anchor needed)
+data_freshness: T+0 for registration; annual reports updated yearly around June

@@ -1,0 +1,116 @@
+name: qcc-operation-pulse
+version: 0.1.0
+display_name: 企查查经营动态与资质画像
+display_name_en: QCC operations / qualifications / financing / news pulse
+description: |
+  35 维度:资质 / 行政许可 / 牌照 / 荣誉 / 评级 / 信用承诺 / 招投标 / 招聘 / 融资
+  / 私募管理人 / 舆情 / 公告 / 政府约谈 / 召回 / 抽检 / 软件违规 / 土地交易 等。
+description_en: |
+  35-dim operating pulse: qualifications, admin licenses, telecom/food/game permits,
+  honors, ratings, bids, hiring, financing, fund manager status, news sentiment,
+  announcements, govt interviews, product recalls/spot-checks, land deals.
+
+triggers:
+  - "有什么资质"
+  - "中标记录"
+  - "招聘情况"
+  - "融资历史"
+  - "舆情"
+  - "牌照"
+  - "评级"
+  - "近期动态"
+  - "招了多少人"
+
+input:
+  type: object
+  properties:
+    company:
+      type: string
+    groups:
+      type: array
+      items: {type: string, enum: [A, B, C, D, E, F]}
+      default: [A, B, C, D, E, F]
+      description: |
+        A=资质许可 / B=荣誉评级 / C=市场动态 / D=舆情公告 / E=负面合规 / F=资产交易
+  required: [company]
+
+output:
+  type: object
+  properties:
+    qualifications: {type: object}
+    honors: {type: object}
+    market: {type: object}
+    sentiment: {type: object}
+    negative: {type: object}
+    assets: {type: object}
+    key_signals: {type: array}
+
+flow:
+  - id: anchor
+    skill: qcc-anchor
+    args: {query: "{{input.company}}"}
+    save_as: anchor
+    skip_if: "uscc_pattern_matched({{input.company}})"
+
+  # A — qualifications
+  - {id: a_qual,        tool: qcc-operation:get_qualifications,            args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: A, skip_if: "'A' not in input.groups"}
+  - {id: a_adm_lic,     tool: qcc-operation:get_administrative_license,    args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: A, skip_if: "'A' not in input.groups"}
+  - {id: a_tax_qual,    tool: qcc-operation:get_taxpayer_qualification,    args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: A, skip_if: "'A' not in input.groups"}
+  - {id: a_telecom,     tool: qcc-operation:get_telecom_license,           args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: A, skip_if: "'A' not in input.groups"}
+  - {id: a_food,        tool: qcc-operation:get_food_safety,               args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: A, skip_if: "'A' not in input.groups"}
+  - {id: a_game,        tool: qcc-operation:get_game_approval,             args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: A, skip_if: "'A' not in input.groups"}
+  - {id: a_ad,          tool: qcc-operation:get_advertising_review,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: A, skip_if: "'A' not in input.groups"}
+  - {id: a_iec,         tool: qcc-operation:get_import_export_credit,      args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: A, skip_if: "'A' not in input.groups"}
+
+  # B — honors
+  - {id: b_honor,       tool: qcc-operation:get_honor_info,                args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: B, skip_if: "'B' not in input.groups"}
+  - {id: b_ranking,     tool: qcc-operation:get_ranking_list_info,         args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: B, skip_if: "'B' not in input.groups"}
+  - {id: b_credit_eval, tool: qcc-operation:get_credit_evaluation,         args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: B, skip_if: "'B' not in input.groups"}
+  - {id: b_credit_com,  tool: qcc-operation:get_credit_commitments,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: B, skip_if: "'B' not in input.groups"}
+  - {id: b_tech_ach,    tool: qcc-operation:get_tech_achievement,          args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: B, skip_if: "'B' not in input.groups"}
+  - {id: b_random,      tool: qcc-operation:get_random_check,              args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: B, skip_if: "'B' not in input.groups"}
+
+  # C — market
+  - {id: c_bid,         tool: qcc-operation:get_bidding_info,              args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: C, skip_if: "'C' not in input.groups"}
+  - {id: c_recruit,     tool: qcc-operation:get_recruitment_info,          args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: C, skip_if: "'C' not in input.groups"}
+  - {id: c_fin,         tool: qcc-operation:get_financing_records,         args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: C, skip_if: "'C' not in input.groups"}
+  - {id: c_fin_lease,   tool: qcc-operation:get_financing_lease_info,      args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: C, skip_if: "'C' not in input.groups"}
+  - {id: c_inv_inst,    tool: qcc-operation:get_investment_institution,    args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: C, skip_if: "'C' not in input.groups"}
+  - {id: c_pf_manager,  tool: qcc-operation:get_private_fund_manager,      args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: C, skip_if: "'C' not in input.groups"}
+
+  # D — sentiment / announcements
+  - {id: d_news,        tool: qcc-operation:get_news_sentiment,            args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: D, skip_if: "'D' not in input.groups"}
+  - {id: d_com_ann,     tool: qcc-operation:get_company_announcement,      args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: D, skip_if: "'D' not in input.groups"}
+  - {id: d_gov_ann,     tool: qcc-operation:get_government_announcement,   args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: D, skip_if: "'D' not in input.groups"}
+  - {id: d_rel_ann,     tool: qcc-operation:get_related_announcement,      args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: D, skip_if: "'D' not in input.groups"}
+  - {id: d_gov_intv,    tool: qcc-operation:get_government_interview,      args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: D, skip_if: "'D' not in input.groups"}
+
+  # E — negative
+  - {id: e_counterfeit, tool: qcc-operation:get_counterfeit_cosmetics,     args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: E, skip_if: "'E' not in input.groups"}
+  - {id: e_recall,      tool: qcc-operation:get_product_recall,            args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: E, skip_if: "'E' not in input.groups"}
+  - {id: e_prod_chk,    tool: qcc-operation:get_product_spot_check,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: E, skip_if: "'E' not in input.groups"}
+  - {id: e_sw_viol,     tool: qcc-operation:get_software_violation,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: E, skip_if: "'E' not in input.groups"}
+  - {id: e_entry_deny,  tool: qcc-operation:get_entry_denied,              args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: E, skip_if: "'E' not in input.groups"}
+  - {id: e_spot_chk,    tool: qcc-operation:get_spot_check_info,           args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: E, skip_if: "'E' not in input.groups"}
+
+  # F — assets
+  - {id: f_land_grant,  tool: qcc-operation:get_land_grant_info,           args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: F, skip_if: "'F' not in input.groups"}
+  - {id: f_land_trans,  tool: qcc-operation:get_land_transfer_info,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: F, skip_if: "'F' not in input.groups"}
+  - {id: f_asset_auc,   tool: qcc-operation:get_asset_auction,             args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: F, skip_if: "'F' not in input.groups"}
+  - {id: f_prop_tx,     tool: qcc-operation:get_property_rights_transaction, args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: F, skip_if: "'F' not in input.groups"}
+
+  - id: signal_extract
+    type: post_process
+    rules:
+      - condition: "d_gov_intv.records.length > 0"
+        flag: "近期被政府约谈 — 重要预警"
+      - condition: "e_recall.records.length > 0 or e_prod_chk.failures > 0"
+        flag: "产品质量风险:近期召回 / 抽检不合格"
+      - condition: "c_fin.records.where(date.within_months(12)).length > 0"
+        flag: "近 12 个月有融资活动"
+
+mcp_servers:
+  - qcc-operation
+
+quota_hint: 35 calls if all groups; per-group ~6 calls
+data_freshness: T+0 except 招聘 / 舆情 实时性高(秒级)

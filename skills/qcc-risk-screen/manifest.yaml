@@ -1,0 +1,112 @@
+name: qcc-risk-screen
+version: 0.1.0
+display_name: 企查查全维度风险扫描
+display_name_en: QCC full-dimensional risk screen
+description: |
+  34 个 risk 维度一次性扫描:司法 / 失信 / 限消限出 / 经营异常 / 严重违法 / 行政处罚
+  / 税务异常 / 破产 / 股权抵质押 / 公告 等。授信风控 / 投后监控 / M&A 红线扫描.
+description_en: |
+  34-dimensional risk scan: judicial, dishonesty, consumption/exit restrictions,
+  business exceptions, serious violations, admin penalties, tax abnormalities,
+  bankruptcy, equity freeze/pledge, court notices. For credit risk, post-investment
+  monitoring, M&A red-flag screening.
+
+triggers:
+  - "查司法风险"
+  - "看下风险情况"
+  - "...有没有被列入失信"
+  - "全维度风险扫描"
+  - "红线扫描"
+  - "授信前风险"
+  - "...有没有被限高"
+  - "尽调风险维度"
+
+input:
+  type: object
+  properties:
+    company:
+      type: string
+    depth:
+      type: string
+      enum: [quick, default, full]
+      default: default
+      description: |
+        quick = 只跑 P0 (12 tools); default = P0+P1 (19); full = 全部 34 个
+  required: [company]
+
+output:
+  type: object
+  properties:
+    red_flags: {type: array}
+    litigation: {type: array}
+    encumbrance: {type: array}
+    financial_admin: {type: array}
+    risk_score_hint:
+      type: object
+      properties:
+        level: {type: string, enum: [low, medium, high]}
+        reasoning: {type: string}
+
+flow:
+  - id: anchor
+    skill: qcc-anchor
+    args: {query: "{{input.company}}"}
+    save_as: anchor
+    skip_if: "uscc_pattern_matched({{input.company}})"
+
+  # P0 — red flags (always runs)
+  - {id: p0_dishonest,   tool: qcc-risk:get_dishonest_info,             args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_exit,        tool: qcc-risk:get_exit_restriction,           args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_highcon,     tool: qcc-risk:get_high_consumption_restriction, args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_judgment,    tool: qcc-risk:get_judgment_debtor_info,       args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_serious,     tool: qcc-risk:get_serious_violation,          args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_business_ex, tool: qcc-risk:get_business_exception,         args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_bankrupt,    tool: qcc-risk:get_bankruptcy_reorganization,  args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_tax_viol,    tool: qcc-risk:get_tax_violation,              args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_tax_abnorm,  tool: qcc-risk:get_tax_abnormal,               args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_tax_arrear,  tool: qcc-risk:get_tax_arrears_notice,         args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_simple_canc, tool: qcc-risk:get_simple_cancellation_info,   args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+  - {id: p0_disciplin,   tool: qcc-risk:get_disciplinary_list,          args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p0}
+
+  # P1 — active cases (runs at depth >= default)
+  - {id: p1_judicial,   tool: qcc-risk:get_judicial_documents,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p1, skip_if: "input.depth == 'quick'"}
+  - {id: p1_case_file,  tool: qcc-risk:get_case_filing_info,          args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p1, skip_if: "input.depth == 'quick'"}
+  - {id: p1_court_not,  tool: qcc-risk:get_court_notice,              args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p1, skip_if: "input.depth == 'quick'"}
+  - {id: p1_hearing,    tool: qcc-risk:get_hearing_notice,            args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p1, skip_if: "input.depth == 'quick'"}
+  - {id: p1_pre_lit,    tool: qcc-risk:get_pre_litigation_mediation,  args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p1, skip_if: "input.depth == 'quick'"}
+  - {id: p1_serve_not,  tool: qcc-risk:get_service_notice,            args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p1, skip_if: "input.depth == 'quick'"}
+  - {id: p1_serve_ann,  tool: qcc-risk:get_service_announcement,      args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p1, skip_if: "input.depth == 'quick'"}
+
+  # P2 + P3 — only at depth=full
+  - {id: p2_eq_freeze,  tool: qcc-risk:get_equity_freeze,             args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p2_eq_pledge,  tool: qcc-risk:get_equity_pledge_info,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p2_stock_pl,   tool: qcc-risk:get_stock_pledge_info,         args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p2_chat_mort,  tool: qcc-risk:get_chattel_mortgage_info,     args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p2_land_mort,  tool: qcc-risk:get_land_mortgage_info,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p2_jud_auct,   tool: qcc-risk:get_judicial_auction,          args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p2_prop_ann,   tool: qcc-risk:get_property_asset_announcement, args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p2_valuation,  tool: qcc-risk:get_valuation_inquiry,         args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p3_admin_pen,  tool: qcc-risk:get_administrative_penalty,    args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p3_env_pen,    tool: qcc-risk:get_environmental_penalty,     args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p3_default,    tool: qcc-risk:get_default_info,              args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p3_guarantee,  tool: qcc-risk:get_guarantee_info,            args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p3_liquid,     tool: qcc-risk:get_liquidation_info,          args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p3_cancel,     tool: qcc-risk:get_cancellation_record_info,  args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p3_exhort,     tool: qcc-risk:get_public_exhortation,        args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+  - {id: p3_terminated, tool: qcc-risk:get_terminated_cases,          args: {searchKey: "{{anchor.uscc || input.company}}"}, parallel_group: p2p3, skip_if: "input.depth != 'full'"}
+
+  - id: score
+    type: post_process
+    rules:
+      - condition: "any(p0_*.count > 0)"
+        action: "set risk_score_hint.level = 'high'; halt_remaining = true"
+      - condition: "sum(p1_*.count) >= 5"
+        action: "set risk_score_hint.level = max(level, 'medium')"
+      - condition: "all_zero"
+        action: "set risk_score_hint.level = 'low'"
+
+mcp_servers:
+  - qcc-risk
+
+quota_hint: 12 / 19 / 34 calls for quick / default / full (+1 if anchor needed)
+data_freshness: T+0

@@ -1,0 +1,27 @@
+{
+  "name": "qcc-client",
+  "version": "0.1.0",
+  "description": "TypeScript client for 企查查 Agent (MCP Streamable HTTP)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "qcc-ts": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "example:company": "tsx examples/company-lookup.ts",
+    "example:risk": "tsx examples/batch-risk-check.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

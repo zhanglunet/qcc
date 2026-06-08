@@ -1,0 +1,115 @@
+name: qcc-executive-background
+version: 0.1.0
+display_name: 企查查法代/高管个人背调
+display_name_en: QCC executive / legal-rep personal background check
+description: |
+  双参数(USCC + 自然人姓名)42 维度个人背调:任职 / 对外投资 / 控制企业 /
+  受益所有人 / 司法 / 失信 / 限消 / 限出 / 股权冻结 / 出质 / 税收违法,
+  当前 + 历史。入职背调 / 授信关键人合规 / M&A 团队风险.
+description_en: |
+  Dual-arg (USCC + person name) 42-dim personal background check:
+  positions, investments, controlled companies, beneficial-owner roles, judicial
+  records, dishonesty, consumption/exit restrictions, equity/stock pledges,
+  tax violations — both current and historical. For pre-employment, credit
+  underwriting key-person review, M&A team risk.
+
+triggers:
+  - "查一下...的法定代表人有没有问题"
+  - "做高管背调"
+  - "...本人的对外投资"
+  - "这个人控制了几家公司"
+  - "关键人个人风险"
+  - "法代背调"
+  - "person background check"
+
+input:
+  type: object
+  properties:
+    company:
+      type: string
+      description: 锚定公司(自然人姓名需配合该公司才能精准定位)
+    person_name:
+      type: string
+      description: 单个被查人姓名
+    person_names:
+      type: array
+      items: {type: string}
+      description: 多个被查人(可选;若提供则对每个人跑一遍 flow)
+    depth:
+      type: string
+      enum: [current, full]
+      default: current
+      description: current = 仅当前 20 维度; full = current + 历史 22 维度
+  required: [company]
+  oneOf:
+    - required: [person_name]
+    - required: [person_names]
+
+output:
+  type: object
+  properties:
+    person: {type: object}
+    current: {type: object}
+    historical: {type: object}
+    risk_signals: {type: array}
+
+flow:
+  - id: anchor
+    skill: qcc-anchor
+    args: {query: "{{input.company}}"}
+    save_as: anchor
+    skip_if: "uscc_pattern_matched({{input.company}})"
+
+  # 当前 — 职务 / 关系
+  - {id: cur_positions,   tool: qcc-executive:get_executive_positions,             args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur}
+  - {id: cur_legal_rep,   tool: qcc-executive:get_executive_legal_rep_roles,       args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur}
+  - {id: cur_invest,      tool: qcc-executive:get_executive_investments,           args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur}
+  - {id: cur_controlled,  tool: qcc-executive:get_executive_controlled_companies,  args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur}
+  - {id: cur_related,     tool: qcc-executive:get_executive_related_companies,     args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur}
+  - {id: cur_ubo,         tool: qcc-executive:get_executive_beneficial_owner,      args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur}
+
+  # 当前 — 司法/失信
+  - {id: cur_admin_pen,   tool: qcc-executive:get_executive_admin_penalty,         args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_case_file,   tool: qcc-executive:get_executive_case_filing,           args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_court_not,   tool: qcc-executive:get_executive_court_notice,          args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_hearing,     tool: qcc-executive:get_executive_hearing_notice,        args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_dishonest,   tool: qcc-executive:get_executive_dishonest,             args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_eq_freeze,   tool: qcc-executive:get_executive_equity_freeze,         args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_eq_pledge,   tool: qcc-executive:get_executive_equity_pledge,         args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_stock_pl,    tool: qcc-executive:get_executive_stock_pledge,          args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_exit,        tool: qcc-executive:get_executive_exit_restriction,      args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_highcon,     tool: qcc-executive:get_executive_high_consumption_ban,  args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_judgment,    tool: qcc-executive:get_executive_judgment_debtor,       args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_jud_docs,    tool: qcc-executive:get_executive_judicial_docs,         args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_pre_lit,     tool: qcc-executive:get_executive_pre_litigation_mediation, args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_serve_not,   tool: qcc-executive:get_executive_service_notice,        args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_tax_viol,    tool: qcc-executive:get_executive_tax_violation,         args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_terminated,  tool: qcc-executive:get_executive_terminated_cases,      args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_prop_reward, tool: qcc-executive:get_executive_property_reward_notice, args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+  - {id: cur_valuation,   tool: qcc-executive:get_executive_valuation_inquiry,     args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: cur_risk}
+
+  # 历史 — 仅 depth=full 时跑
+  - {id: hist_admin_pen,  tool: qcc-executive:get_executive_historical_admin_penalty,        args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_case_file,  tool: qcc-executive:get_executive_historical_case_filing,          args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_court_not,  tool: qcc-executive:get_executive_historical_court_notice,         args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_dishonest,  tool: qcc-executive:get_executive_historical_dishonest,            args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_eq_freeze,  tool: qcc-executive:get_executive_historical_equity_freeze,        args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_eq_pledge,  tool: qcc-executive:get_executive_historical_equity_pledge,        args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_hearing,    tool: qcc-executive:get_executive_historical_hearing_notice,       args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_highcon,    tool: qcc-executive:get_executive_historical_high_consumption_ban, args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_invest,     tool: qcc-executive:get_executive_historical_investments,          args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_judgment,   tool: qcc-executive:get_executive_historical_judgment_debtor,      args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_jud_docs,   tool: qcc-executive:get_executive_historical_judicial_docs,        args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_legal_rep,  tool: qcc-executive:get_executive_historical_legal_rep_roles,      args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_partners,   tool: qcc-executive:get_executive_historical_partners,             args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_positions,  tool: qcc-executive:get_executive_historical_positions,            args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_pre_lit,    tool: qcc-executive:get_executive_historical_pre_litigation_mediation, args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_related,    tool: qcc-executive:get_executive_historical_related_companies,    args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_service,    tool: qcc-executive:get_executive_historical_service_notice,       args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+  - {id: hist_terminated, tool: qcc-executive:get_executive_historical_terminated_cases,     args: {searchKey: "{{anchor.uscc}}", personName: "{{input.person_name}}"}, parallel_group: hist, skip_if: "input.depth != 'full'"}
+
+mcp_servers:
+  - qcc-executive
+
+quota_hint: 20 calls / person (current) or 42 / person (full). Multiply by N if person_names is a list.
+data_freshness: T+0
