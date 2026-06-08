@@ -11,6 +11,7 @@
 | [`qcc-ipr-portfolio`](./qcc-ipr-portfolio/) | 专利 / 商标 / 著作权 / 数字资产 / 自媒体 | ipr | 18 | USCC |
 | [`qcc-operation-pulse`](./qcc-operation-pulse/) | 资质 / 招投标 / 招聘 / 融资 / 舆情 / 公告 | operation | 35 | USCC |
 | [`qcc-executive-background`](./qcc-executive-background/) | 法代 / 高管个人背调(当前+历史) | executive | 42 | USCC + 人名 |
+| [`qcc-person-portfolio`](./qcc-person-portfolio/) | 自然人 → 所有公司反查 + xlsx 导出 | company + executive | 7 | 人名 + anchor |
 
 `history` server(34 tool)需企业认证,目前账户拿不到,**未生成 skill**;后续拿到 enterprise key 后补 `qcc-historical-trail` 即可。
 

@@ -4,7 +4,7 @@
 [![tools](https://img.shields.io/badge/tools-146-green)]()
 [![skills](https://img.shields.io/badge/workflow_skills-7-orange)]()
 
-把 [agent.qcc.com](https://agent.qcc.com/guide) 提供的 6 个 MCP Streamable HTTP server(146 个 tool)封装成 **Python / TypeScript 客户端 + 7 个工作流 skill**,适用于 KYB / 尽调 / 投后监控 / 供应商准入等场景,支持四种接入形态:
+把 [agent.qcc.com](https://agent.qcc.com/guide) 提供的 6 个 MCP Streamable HTTP server(146 个 tool)封装成 **Python / TypeScript 客户端 + 8 个工作流 skill**,适用于 KYB / 尽调 / 投后监控 / 供应商准入等场景,支持四种接入形态:
 
 | 接入形态 | 适合谁 | 入口 |
 |---|---|---|
@@ -22,11 +22,11 @@ qcc/
 ├── python/                ← Python 客户端 + CLI qcc-py
 ├── typescript/            ← TypeScript 客户端 + CLI qcc-ts
 └── skills/
-    ├── README.md          ← 7 个 skill 一览
+    ├── README.md          ← 8 个 skill 一览
     ├── _inventory.json    ← 146 tool 的全量 schema(单一事实源)
     ├── _hermes.md         ← Hermes 集成指南
     ├── _openclaw.md       ← OpenClaw 集成指南
-    └── qcc-{anchor,basic-profile,ownership-trace,risk-screen,ipr-portfolio,operation-pulse,executive-background}/
+    └── qcc-{anchor,basic-profile,ownership-trace,risk-screen,ipr-portfolio,operation-pulse,executive-background,person-portfolio}/
         ├── SKILL.md       ← Claude Code 触发(frontmatter description)
         └── manifest.yaml  ← Hermes / 自动化框架 工作流定义
 ```
@@ -55,6 +55,7 @@ URL:`https://agent.qcc.com/mcp/<server>/stream`,鉴权 `Authorization: Bearer <K
 | `qcc-ipr-portfolio` | 18 | 8 / 10 / 18 | "查专利" / "查商标" / "自媒体矩阵" |
 | `qcc-operation-pulse` | 35 | 6 / 12 / 35(按 group 选) | "中标记录" / "融资历史" / "舆情" |
 | `qcc-executive-background` | 42 | 20 / 42 / 人(current/full) | "法代背调" / "高管个人风险" |
+| `qcc-person-portfolio` | 7 | 7 / 人 | "查...所有公司" / "...担任董监高的公司" / "导出关联企业" |
 
 详见 [`skills/README.md`](./skills/README.md)。
 

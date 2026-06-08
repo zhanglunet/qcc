@@ -1,0 +1,132 @@
+name: qcc-person-portfolio
+version: 0.1.0
+display_name: 自然人对外公司清单(反查)
+display_name_en: Natural-person → companies portfolio (reverse lookup)
+description: |
+  给一个自然人姓名,反查他作为董监高 / 法代 / 控股 / 关联 的所有公司,
+  合并去重导出 Excel(8 sheet)。
+description_en: |
+  Given a natural person's Chinese name, reverse-lookup every company where they
+  serve as director / supervisor / senior management / legal representative /
+  controller / related party. Deduplicate and output 8-sheet Excel.
+
+triggers:
+  - "查...所有公司"
+  - "...担任董监高的公司"
+  - "...控制了哪些企业"
+  - "...的对外任职清单"
+  - "导出某个人的关联公司"
+  - "...的法人版图"
+  - "...的投资 / 任职 公司表"
+
+input:
+  type: object
+  properties:
+    person_name:
+      type: string
+      description: 中文姓名(必填)
+    anchor_uscc:
+      type: string
+      pattern: "^[0-9A-HJ-NPQRTUWXY]{18}$"
+      description: 已知该人物任职的某家公司 USCC(用于消同名歧义)
+    anchor_company_name:
+      type: string
+      description: 替代 anchor_uscc — 给公司名让 skill 自动 query 锚定
+    out_path:
+      type: string
+      description: xlsx 输出绝对/相对路径
+      default: "./{person_name}_companies.xlsx"
+  required: [person_name]
+  oneOf:
+    - required: [anchor_uscc]
+    - required: [anchor_company_name]
+
+output:
+  type: object
+  properties:
+    out_path: {type: string}
+    counts:
+      type: object
+      properties:
+        current_positions:    {type: integer}
+        historical_positions: {type: integer}
+        current_legal_rep:    {type: integer}
+        historical_legal_rep: {type: integer}
+        controlled:           {type: integer, description: "may be capped at 100"}
+        related:              {type: integer}
+        master_dedup:         {type: integer, description: "unique companies after merge"}
+
+flow:
+  - id: resolve_anchor
+    type: branch
+    when: "input.anchor_uscc not set"
+    then:
+      - id: q
+        tool: qcc-company:get_company_by_query
+        args: {searchKey: "{{input.anchor_company_name}}"}
+        save_as: anchor_query
+        on_multi_candidate:
+          action: prompt_user_to_select
+          filter: "candidate.法定代表人名称 contains input.person_name"
+        on_unique:
+          action: set
+          target: anchor_uscc
+          value: "{{anchor_query.企业信息.统一社会信用代码}}"
+    else:
+      - id: passthrough
+        action: set
+        target: anchor_uscc
+        value: "{{input.anchor_uscc}}"
+
+  - id: positions_current
+    tool: qcc-executive:get_executive_positions
+    args: {searchKey: "{{anchor_uscc}}", personName: "{{input.person_name}}"}
+    parallel_group: fetch
+  - id: positions_historical
+    tool: qcc-executive:get_executive_historical_positions
+    args: {searchKey: "{{anchor_uscc}}", personName: "{{input.person_name}}"}
+    parallel_group: fetch
+  - id: legal_rep_current
+    tool: qcc-executive:get_executive_legal_rep_roles
+    args: {searchKey: "{{anchor_uscc}}", personName: "{{input.person_name}}"}
+    parallel_group: fetch
+  - id: legal_rep_historical
+    tool: qcc-executive:get_executive_historical_legal_rep_roles
+    args: {searchKey: "{{anchor_uscc}}", personName: "{{input.person_name}}"}
+    parallel_group: fetch
+  - id: controlled
+    tool: qcc-executive:get_executive_controlled_companies
+    args: {searchKey: "{{anchor_uscc}}", personName: "{{input.person_name}}"}
+    parallel_group: fetch
+    note: "QCC 单次返回最多 100 条; 看 摘要.总数 是否有截断"
+  - id: related
+    tool: qcc-executive:get_executive_related_companies
+    args: {searchKey: "{{anchor_uscc}}", personName: "{{input.person_name}}"}
+    parallel_group: fetch
+
+  - id: aggregate_and_export
+    type: post_process
+    runtime: python
+    script: ./run.py
+    args:
+      person: "{{input.person_name}}"
+      anchor: "{{anchor_uscc}}"
+      out: "{{input.out_path}}"
+      data:
+        current_positions:    "{{positions_current}}"
+        historical_positions: "{{positions_historical}}"
+        current_legal_rep:    "{{legal_rep_current}}"
+        historical_legal_rep: "{{legal_rep_historical}}"
+        controlled:           "{{controlled}}"
+        related:              "{{related}}"
+
+mcp_servers:
+  - qcc-company
+  - qcc-executive
+
+quota_hint: 1 (anchor) + 6 (fetch) = 7 calls per person
+data_freshness: T+0
+known_limits:
+  - controlled_companies tool returns max 100 records per call; no pagination param available
+  - historical 字段可能补不全(QCC 主动留白)
+  - executive server 不覆盖 港股/美股 上市的开曼 / VIE 主体
