@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900" width="900" height="900">
+  <!-- 米白底 -->
+  <rect width="900" height="900" fill="#f5f1e8"/>
+
+  <!-- 左侧色块装饰 -->
+  <rect x="0" y="0" width="18" height="900" fill="#c8523a"/>
+  <rect x="28" y="0" width="6" height="900" fill="#1a3d2e"/>
+
+  <!-- 右上角技术参数列 -->
+  <g font-family="Georgia, 'Songti SC', serif" fill="#1a3d2e">
+    <text x="780" y="100" font-size="16" font-style="italic" fill="#7a7770" text-anchor="end">SERVERS</text>
+    <text x="860" y="100" font-size="26" font-weight="700" text-anchor="end">6</text>
+    <text x="780" y="138" font-size="16" font-style="italic" fill="#7a7770" text-anchor="end">TOOLS</text>
+    <text x="860" y="138" font-size="26" font-weight="700" text-anchor="end">146</text>
+    <text x="780" y="176" font-size="16" font-style="italic" fill="#7a7770" text-anchor="end">SKILLS</text>
+    <text x="860" y="176" font-size="26" font-weight="700" text-anchor="end">8</text>
+    <text x="780" y="214" font-size="16" font-style="italic" fill="#7a7770" text-anchor="end">RUNTIMES</text>
+    <text x="860" y="214" font-size="26" font-weight="700" font-style="italic" fill="#c8523a" text-anchor="end">4</text>
+  </g>
+
+  <!-- 主标题 (居中靠上 1/3 处) -->
+  <g font-family="Georgia, 'Songti SC', serif">
+    <text x="80" y="380" font-size="68" font-weight="700" fill="#1a3d2e" letter-spacing="-1.5">把企查查</text>
+    <text x="80" y="460" font-size="68" font-weight="700" fill="#1a3d2e" letter-spacing="-1.5">塞进任何一个</text>
+    <text x="80" y="555" font-size="84" font-weight="700" fill="#c8523a" font-style="italic" letter-spacing="-2">AI Agent.</text>
+  </g>
+
+  <!-- 副标题 -->
+  <g font-family="-apple-system, 'PingFang SC', sans-serif">
+    <text x="80" y="640" font-size="24" fill="#5a5852" letter-spacing="1">
+      KYB · 尽调 · 投后监控 · 供应商准入
+    </text>
+    <text x="80" y="680" font-size="20" fill="#7a7770" letter-spacing="0.5">
+      6 MCP server · 146 tool · 8 工作流 skill · 4 种运行时
+    </text>
+  </g>
+
+  <!-- 中段架构示意（极简） -->
+  <g font-family="'SF Mono', Consolas, monospace" fill="#1a3d2e">
+    <rect x="80" y="730" width="740" height="50" fill="none" stroke="#1a3d2e" stroke-width="1.5"/>
+    <text x="450" y="762" font-size="16" text-anchor="middle">8 Workflow Skills</text>
+
+    <rect x="80" y="788" width="740" height="40" fill="none" stroke="#7a7770" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="450" y="813" font-size="13" fill="#7a7770" text-anchor="middle">_inventory.json · Python / TS Client · MCP Streamable HTTP</text>
+  </g>
+
+  <!-- 底部仓库标识 -->
+  <g font-family="'SF Mono', Consolas, monospace">
+    <line x1="80" y1="858" x2="820" y2="858" stroke="#d4ccb7" stroke-width="1"/>
+    <text x="80" y="888" font-size="17" fill="#1a3d2e" font-weight="600">github.com/zhanglunet/qcc</text>
+    <text x="820" y="888" font-size="14" fill="#7a7770" text-anchor="end">Apache-2.0</text>
+  </g>
+</svg>
