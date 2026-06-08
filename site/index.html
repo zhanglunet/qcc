@@ -314,6 +314,60 @@ section{padding:80px 24px;}
 .article-wrap td{padding:10px 12px;border-bottom:1px solid #d4ccb7;}
 .article-wrap tr:nth-child(even) td{background:#ebe4d2;}
 
+/* ============ Disclaimer ============ */
+#disclaimer{background:#f5f1e8;border-top:1px solid #d4ccb7;}
+.disclaimer-wrap{
+  max-width:880px;margin:0 auto;
+  border:2px solid #c8523a;
+  background:#fff8f3;
+  padding:36px 40px;
+  position:relative;
+}
+.disclaimer-wrap::before{
+  content:"⚠";
+  position:absolute;top:-18px;left:32px;
+  background:#c8523a;color:#fff;
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;
+}
+.disclaimer-wrap h2{
+  font-family:Georgia,"Songti SC",serif;
+  font-size:24px;color:#8a2a16;
+  font-weight:700;margin-bottom:10px;letter-spacing:-0.3px;
+}
+.disclaimer-wrap .disc-sub{
+  font-size:13px;color:#7a5848;
+  margin-bottom:24px;
+  text-transform:uppercase;letter-spacing:1.5px;
+}
+.disc-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:20px;margin-bottom:24px;
+}
+.disc-card{
+  border-left:3px solid #c8523a;
+  padding:4px 0 4px 16px;
+}
+.disc-card-title{
+  font-size:13px;font-weight:700;color:#8a2a16;
+  margin-bottom:6px;letter-spacing:0.3px;
+}
+.disc-card-body{font-size:13px;color:#4a3a30;line-height:1.6;}
+.disc-card-body code{
+  background:#ebe4d2;padding:1px 5px;font-size:12px;color:#8a3a26;
+}
+.disc-footer{
+  border-top:1px dashed #d4ccb7;
+  padding-top:20px;
+  font-size:13px;color:#5a4a3e;line-height:1.65;
+}
+.disc-footer a{color:#c8523a;border-bottom:1px solid #c8523a;font-weight:600;}
+@media(max-width:680px){
+  .disclaimer-wrap{padding:28px 22px;}
+  .disclaimer-wrap h2{font-size:20px;}
+}
+
 /* ============ Footer ============ */
 footer{
   background:#1a3d2e;color:#9ab3a7;
@@ -342,6 +396,7 @@ footer{
       <a href="#runtimes">4 种接入</a>
       <a href="#arch">架构</a>
       <a href="#article">背景文章</a>
+      <a href="#disclaimer" style="color:#c8523a;">⚠ 免责</a>
       <a href="https://github.com/zhanglunet/qcc" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
   </div>
@@ -704,18 +759,95 @@ python ../skills/qcc-person-portfolio/run.py \
   </div>
 </section>
 
+<!-- ============ Disclaimer ============ -->
+<section id="disclaimer">
+  <div class="section-inner">
+    <div class="disclaimer-wrap">
+      <h2>免责声明</h2>
+      <div class="disc-sub">Disclaimer · 使用本项目前必读</div>
+
+      <div class="disc-grid">
+
+        <div class="disc-card">
+          <div class="disc-card-title">① 非官方第三方集成</div>
+          <div class="disc-card-body">
+            本项目是 <code>agent.qcc.com</code> 公开 API 的开源接入封装，
+            <strong>非企查查官方产品</strong>，与 <strong>苏州朗动信息技术有限公司</strong>
+            无任何隶属、代理、合作关系。"企查查" / "QCC" 为其注册商标，本项目仅作描述性引用。
+          </div>
+        </div>
+
+        <div class="disc-card">
+          <div class="disc-card-title">② 数据来源与准确性</div>
+          <div class="disc-card-body">
+            所有数据由上游 API 返回，准确性、完整性、时效性由上游决定。
+            可能与国家企业信用信息公示系统、裁判文书网、证监会、知识产权局等权威渠道存在出入。
+            <strong>重大决策必须交叉验证。</strong>
+          </div>
+        </div>
+
+        <div class="disc-card">
+          <div class="disc-card-title">③ 合规使用义务</div>
+          <div class="disc-card-body">
+            使用者须遵守上游服务条款及《个人信息保护法》《数据安全法》《网络安全法》《征信业管理条例》等法律法规。
+            <strong>禁止</strong>用于人肉搜索、骚扰、未授权大规模采集、转售数据。
+          </div>
+        </div>
+
+        <div class="disc-card">
+          <div class="disc-card-title">④ 个人信息保护</div>
+          <div class="disc-card-body">
+            <code>executive</code> / <code>person-portfolio</code> 等 skill 触达自然人信息。
+            处理前须确认 PIPL 第十三条规定的合法基础；自动化决策须满足第二十四条；跨境传输须遵循第三章。
+            "已合法公开" <strong>不豁免</strong>后续处理的合规义务。
+          </div>
+        </div>
+
+        <div class="disc-card">
+          <div class="disc-card-title">⑤ 仅供参考</div>
+          <div class="disc-card-body">
+            输出 <strong>不构成</strong> 法律意见、投资建议、税务建议、信贷决策依据。
+            重大商业、法律、金融决策必须由有资质专业人士独立核实。
+          </div>
+        </div>
+
+        <div class="disc-card">
+          <div class="disc-card-title">⑥ 无担保 · 责任限制</div>
+          <div class="disc-card-body">
+            本项目 <strong>"按现状"提供</strong>，无任何明示或暗示担保（含适销性、特定用途适用性、非侵权性）。
+            在适用法律允许的最大范围内，维护者及贡献者不对使用产生的直接 / 间接 / 后果性损失承担责任。
+          </div>
+        </div>
+
+      </div>
+
+      <div class="disc-footer">
+        继续 clone / fork / 部署 / 调用本项目，即视为已知悉并同意上述全部条款。
+        完整免责条款（含合规细则、商标声明、责任限制全文）见
+        <a href="https://github.com/zhanglunet/qcc/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">DISCLAIMER.md</a>。
+        商用 / 涉及个人信息的场景请咨询法务。<br>
+        发现合规问题请提
+        <a href="https://github.com/zhanglunet/qcc/issues" target="_blank" rel="noopener">GitHub Issue</a>
+        并标注 <code>[urgent]</code> 前缀。
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ Footer ============ -->
 <footer>
   <div class="footer-inner">
     <div class="footer-brand">qcc<span style="color:#c8523a">.</span></div>
     <div class="footer-links">
       <a href="https://github.com/zhanglunet/qcc" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/zhanglunet/qcc/blob/main/DISCLAIMER.md" target="_blank" rel="noopener">免责声明</a>
       <a href="https://agent.qcc.com/guide" target="_blank" rel="noopener">QCC Agent</a>
       <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP Spec</a>
     </div>
   </div>
   <div class="footer-meta">
-    Apache-2.0 · Open Source · Not affiliated with 企查查 / Suzhou Langdong Information Technology
+    Apache-2.0 · Open Source · Not affiliated with 企查查 / Suzhou Langdong Information Technology Co., Ltd.<br>
+    "企查查" / "QCC" 为 苏州朗动信息技术有限公司 注册商标 · 本项目仅作描述性引用
   </div>
 </footer>
 

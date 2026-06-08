@@ -204,6 +204,20 @@ const result = await client.call(Server.COMPANY, "get_company_by_query", {
 - 接入指南:https://agent.qcc.com/guide
 - MCP 协议:https://modelcontextprotocol.io
 
+# 免责声明
+
+> ⚠️ 使用本项目前**必读**：[DISCLAIMER.md](./DISCLAIMER.md)
+
+- 本项目是 `agent.qcc.com` 公开 API 的**第三方开源接入封装**,**非企查查官方产品**,与 苏州朗动信息技术有限公司 无任何隶属关系
+- 数据来源、准确性、时效性由上游决定,**重大决策须交叉验证**
+- 处理自然人信息须遵守《个人信息保护法 (PIPL)》《数据安全法》《网络安全法》等法律法规,使用者承担合规义务
+- 输出仅供参考,**不构成法律 / 投资 / 税务 / 信贷决策依据**
+- 本项目"按现状"提供,**无任何明示或暗示担保**,维护者不对使用产生的损失承担责任
+
+完整免责条款见 [DISCLAIMER.md](./DISCLAIMER.md)。
+
 # License
 
 Apache-2.0(见 [LICENSE](./LICENSE))。
+
+商标声明:"企查查"、"QCC" 为 苏州朗动信息技术有限公司 注册商标,本项目仅在描述性场景中引用。
