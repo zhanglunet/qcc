@@ -1,6 +1,6 @@
 # Hermes 集成指南
 
-Hermes(CBC 内部 Agent / LLM 框架)消费本目录的方式分三层:
+Hermes(自定义 Agent / LLM 框架)消费本目录的方式分三层:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -204,4 +204,4 @@ def render(s, ctx):
 
 - `history` server 暂未启用,等企业认证 key 拿到后加 8 个 skill(`qcc-historical-*`)
 - 各 skill 的 `output` 字段目前是契约描述,不强制;Hermes 如想做强 schema 校验,把 output schema 转成 JSON Schema / Pydantic 类即可
-- 触发器后期可以挂 CBC 业务术语词典(投后 / KYB / 准入 / 红线 等)增强匹配
+- 触发器后期可以挂业务术语词典(投后 / KYB / 准入 / 红线 等)增强匹配

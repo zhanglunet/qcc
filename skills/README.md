@@ -36,7 +36,7 @@ for d in qcc-*; do ln -s "$(pwd)/$d" ~/.claude/skills/$d; done
 
 详见 [`_openclaw.md`](./_openclaw.md)。HTTP transport 直接装,把 6 个 server 合并到 `~/.openclaw/openclaw.json5` 的 `skills.entries`,设环境变量 `QCC_API_KEY`,跑 `openclaw gateway restart` 即生效。
 
-## 给 Hermes / CBC 内部 Agent 框架用
+## 给 Hermes / 自定义 Agent 框架用
 
 详见 [`_hermes.md`](./_hermes.md)。三步骤:
 1. 读 `_inventory.json` 获取全量 tool 目录

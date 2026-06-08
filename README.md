@@ -4,13 +4,13 @@
 [![tools](https://img.shields.io/badge/tools-146-green)]()
 [![skills](https://img.shields.io/badge/workflow_skills-7-orange)]()
 
-CBC 内部 KYB / 尽调用,把 [agent.qcc.com](https://agent.qcc.com/guide) 提供的 6 个 MCP Streamable HTTP server(146 个 tool)封装成 **Python / TypeScript 客户端 + 7 个工作流 skill**,支持四种接入形态:
+把 [agent.qcc.com](https://agent.qcc.com/guide) 提供的 6 个 MCP Streamable HTTP server(146 个 tool)封装成 **Python / TypeScript 客户端 + 7 个工作流 skill**,适用于 KYB / 尽调 / 投后监控 / 供应商准入等场景,支持四种接入形态:
 
 | 接入形态 | 适合谁 | 入口 |
 |---|---|---|
 | **Claude Code 原生 MCP** | 一线员工 / 调研 / 临时尽调 | `.mcp.json` + `~/.claude/skills/` |
 | **OpenClaw(龙虾)** | 常驻本地 Agent / 跨 IM(WhatsApp/Slack/Discord)消息侧用 | `~/.openclaw/openclaw.json5` |
-| **Hermes(CBC 内部 Agent 框架)** | 服务端编排 / 多用户 / 量化配额管理 | 读 `skills/_inventory.json` + 各 `manifest.yaml` |
+| **Hermes(自定义 Agent / LLM 框架)** | 服务端编排 / 多用户 / 量化配额管理 | 读 `skills/_inventory.json` + 各 `manifest.yaml` |
 | **Python / TS CLI 或 SDK** | 脚本任务 / 数据管道 / Jupyter | `qcc-py` / `qcc-ts` 或 `import qcc_client` |
 
 ## 目录
@@ -104,7 +104,7 @@ openclaw skills status              # 应该有 6 行 qcc-* connected
 openclaw skills info qcc-company    # 应该列出 16 个 tool
 ```
 
-## C. Hermes(CBC 内部 Agent 框架)
+## C. Hermes(自定义 Agent / LLM 框架)
 
 完整协议见 [`skills/_hermes.md`](./skills/_hermes.md)。三步:
 
@@ -171,10 +171,10 @@ const result = await client.call(Server.COMPANY, "get_company_by_query", {
 - `_inventory.json` 是 T+0 快照,QCC 服务端工具改名/增减不自动反映 — **每月跑一次** dump_inventory 保持同步
 - 单体 OpCo 财务字段大量"企业选择不公示",上市集团合并数据需另查港交所 / SEC
 
-# 上游 / 内部参考
+# 上游参考
 
 - 接入指南:https://agent.qcc.com/guide
-- CBC 内部评估文档:`../260608企查查/`(企业 API 3 元/次 vs Aily vs OpenClaw 可行性)
+- MCP 协议:https://modelcontextprotocol.io
 
 # License
 

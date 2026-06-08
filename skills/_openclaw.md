@@ -141,16 +141,16 @@ clawhub publish ./dist/qcc-basic-profile     # 发布到本地 ClawHub registry
 | 6 个 server 加完后内存吃满 | OpenClaw 默认每个 skill 持久连接;按需 `enabled: false` 关一些 |
 | `qcc-history` 永远连不上 | 正常 — 需企业实名认证,免费 key 拿不到 |
 
-## 4. CBC 私有 Skill marketplace 思路(后续)
+## 4. 私有 Skill marketplace 思路(后续)
 
-如果 CBC 想把"标准化的 DD 工作流"内部分发,推荐:
+如果想把"标准化的 DD 工作流"在团队内分发,推荐:
 
-1. 在内网搭一个轻量的 ClawHub mirror(就是个 npm registry + 自定义 metadata index)
+1. 内网搭一个轻量的 ClawHub mirror(就是个 npm registry + 自定义 metadata index)
 2. 把 7 个 skill 用 2.2 的适配层封装成 ClawHub 包,发到 mirror
-3. CBC 员工本地 `clawhub install @cbc/qcc-basic-profile` 即装即用
-4. Skill 内部的 `Authorization` 用员工各自的 `QCC_API_KEY`,**不共享**
+3. 用户本地 `clawhub install @your-org/qcc-basic-profile` 即装即用
+4. Skill 的 `Authorization` 用各人自己的 `QCC_API_KEY`,**不共享**
 
-这样跟"按使用量算 3 元/次"的企业 API 路径无关 — 每人各跑各的,配额各自管,审计粒度清晰。
+每人各跑各的,配额各自管,审计粒度清晰。
 
 ## 5. 与本仓库其他三条接入路径的对比
 
@@ -158,7 +158,7 @@ clawhub publish ./dist/qcc-basic-profile     # 发布到本地 ClawHub registry
 |---|---|---|---|
 | Claude Code 原生 MCP + `~/.claude/skills/` | 一线员工 / 调研用 | ✅ 7 个 SKILL.md 触发 | 低 |
 | **OpenClaw `~/.openclaw/openclaw.json5`** | 本地常驻 / 跨 IM 接入(WhatsApp/Slack 等) | ⚠️ 工作流需上层 prompt 或写适配层 | 低-中 |
-| Hermes (CBC 内部框架) | 服务端编排 / 多用户 / 量化配额 | ✅ manifest.yaml 直接读 | 中 |
+| Hermes(自定义 Agent 框架) | 服务端编排 / 多用户 / 量化配额 | ✅ manifest.yaml 直接读 | 中 |
 | Python / TS CLI | 脚本任务 / 数据管道 / Jupyter | ❌ 手写 | 低 |
 
 ## 6. 参考
