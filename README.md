@@ -2,7 +2,8 @@
 
 [![mcp](https://img.shields.io/badge/MCP-Streamable_HTTP-blue)](https://modelcontextprotocol.io)
 [![tools](https://img.shields.io/badge/tools-146-green)]()
-[![skills](https://img.shields.io/badge/workflow_skills-7-orange)]()
+[![skills](https://img.shields.io/badge/workflow_skills-8-orange)]()
+[![license](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](./LICENSE)
 
 把 [agent.qcc.com](https://agent.qcc.com/guide) 提供的 6 个 MCP Streamable HTTP server(146 个 tool)封装成 **Python / TypeScript 客户端 + 8 个工作流 skill**,适用于 KYB / 尽调 / 投后监控 / 供应商准入等场景,支持四种接入形态:
 
@@ -44,7 +45,7 @@ qcc/
 
 URL:`https://agent.qcc.com/mcp/<server>/stream`,鉴权 `Authorization: Bearer <KEY>`。
 
-## 7 个工作流 skill
+## 8 个工作流 skill
 
 | skill | 串多少 tool | 单次配额 | 触发短语样例 |
 |---|---:|---:|---|
@@ -58,6 +59,32 @@ URL:`https://agent.qcc.com/mcp/<server>/stream`,鉴权 `Authorization: Bearer <K
 | `qcc-person-portfolio` | 7 | 7 / 人 | "查...所有公司" / "...担任董监高的公司" / "导出关联企业" |
 
 详见 [`skills/README.md`](./skills/README.md)。
+
+---
+
+# Quick Start(5 分钟跑通)
+
+最快验证整套链路通不通,跑一个有具体产物(Excel)的 skill:
+
+```bash
+# 1) 配 key
+git clone https://github.com/zhanglunet/qcc && cd qcc
+cp .env.example .env && echo "QCC_API_KEY=你的_token" > .env
+
+# 2) 装 Python 客户端 + skills 额外依赖(openpyxl)
+cd python && python3.10 -m venv .venv && source .venv/bin/activate
+pip install -e ".[skills]"
+
+# 3) 跑 qcc-person-portfolio — 反查某自然人的全部对外公司,导出 Excel
+python ../skills/qcc-person-portfolio/run.py \
+  --person "雷军" \
+  --anchor-by-name "小米科技"
+# → ./雷军_companies.xlsx,8 sheet,~200 家关联公司
+```
+
+打开 `雷军_companies.xlsx`,主 sheet "汇总(去重)"按企业名称去重,标注每家公司是从哪几个维度命中。
+
+跑通后,把 6 个 server 接进 Claude Code / OpenClaw / Hermes(下方)就是水到渠成的事。
 
 ---
 
@@ -78,7 +105,7 @@ export QCC_API_KEY=$(grep ^QCC_API_KEY .env | cut -d= -f2)
 cp .mcp.json.example .mcp.json
 # 把 ${QCC_API_KEY} 占位替换成实际 token, 或确保 env 有 QCC_API_KEY 让 Claude Code 自动替换
 
-# 2) 装 7 个 skill 到用户级
+# 2) 装 8 个 skill 到用户级
 cd skills
 for d in qcc-*; do ln -s "$(pwd)/$d" ~/.claude/skills/$d; done
 
@@ -110,7 +137,7 @@ openclaw skills info qcc-company    # 应该列出 16 个 tool
 完整协议见 [`skills/_hermes.md`](./skills/_hermes.md)。三步:
 
 1. 读 [`skills/_inventory.json`](./skills/_inventory.json) 注册 146 个 MCP tool
-2. 读 [`skills/qcc-*/manifest.yaml`](./skills/) 装载 7 个工作流(`triggers` / `input` schema / `flow`)
+2. 读 [`skills/qcc-*/manifest.yaml`](./skills/) 装载 8 个工作流(`triggers` / `input` schema / `flow`)
 3. 用任意 MCP HTTP 客户端 SDK 连 `.mcp.json` 里的 6 个 server,模板渲染 `{{anchor.uscc}}` 等占位
 
 `skills/_hermes.md` 里有最小 Python loader 参考实现。
