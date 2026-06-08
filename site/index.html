@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>qcc — 把企查查塞进 AI Agent · 6 server × 146 tool × 8 工作流</title>
+<meta name="description" content="一份让 Claude Code / OpenClaw / Hermes / Python CLI 都能直接调用企查查 6 个 MCP server、146 个 tool 的开源接入层。8 个工作流 skill, 一鱼四吃。Apache-2.0 开源。">
+<meta property="og:title" content="qcc — 把企查查塞进 AI Agent">
+<meta property="og:description" content="6 MCP server / 146 tool / 8 workflow skills / 4 runtimes · KYB · 尽调 · 投后监控">
+<meta property="og:type" content="website">
+
+<style>
+/* ============ Reset ============ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:15px;line-height:1.7;
+  color:#2a2e2c;
+  background:#f5f1e8;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+a{color:inherit;text-decoration:none}
+code,pre{font-family:"SF Mono","JetBrains Mono",Consolas,Monaco,"Courier New",monospace}
+
+/* ============ Top Bar ============ */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(245,241,232,0.92);
+  backdrop-filter:saturate(180%) blur(8px);
+  border-bottom:1px solid #d4ccb7;
+}
+.topbar-inner{
+  max-width:1100px;margin:0 auto;
+  padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.brand{
+  font-family:Georgia,"Songti SC","Source Han Serif SC",serif;
+  font-size:20px;font-weight:700;
+  color:#1a3d2e;
+  letter-spacing:-0.5px;
+}
+.brand-dot{color:#c8523a;font-weight:900;}
+.nav{display:flex;gap:28px;font-size:14px;}
+.nav a{color:#5a5852;transition:color .15s;}
+.nav a:hover{color:#1a3d2e;}
+@media(max-width:680px){.nav{display:none}}
+
+/* ============ Hero ============ */
+.hero{
+  max-width:1100px;margin:0 auto;
+  padding:80px 24px 60px;
+  position:relative;
+}
+.hero-eyebrow{
+  font-size:13px;letter-spacing:2px;
+  color:#c8523a;text-transform:uppercase;
+  margin-bottom:24px;font-weight:600;
+}
+.hero h1{
+  font-family:Georgia,"Songti SC","Source Han Serif SC",serif;
+  font-size:54px;line-height:1.15;
+  color:#1a3d2e;font-weight:700;letter-spacing:-1px;
+  margin-bottom:24px;
+}
+.hero h1 .accent{color:#c8523a;font-style:italic;}
+.hero-lede{
+  font-size:18px;line-height:1.65;
+  color:#4a4843;max-width:680px;
+  margin-bottom:36px;
+}
+.hero-stats{
+  display:flex;flex-wrap:wrap;gap:48px;
+  margin-bottom:40px;
+  padding:24px 0;
+  border-top:1px solid #d4ccb7;
+  border-bottom:1px solid #d4ccb7;
+}
+.stat{display:flex;flex-direction:column;}
+.stat-num{
+  font-family:Georgia,serif;
+  font-size:36px;font-weight:700;color:#1a3d2e;
+  line-height:1;letter-spacing:-1px;
+}
+.stat-label{
+  font-size:12px;color:#7a7770;
+  text-transform:uppercase;letter-spacing:1.5px;
+  margin-top:8px;
+}
+.hero-cta{display:flex;gap:14px;flex-wrap:wrap;}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:13px 24px;
+  font-size:14px;font-weight:600;letter-spacing:0.3px;
+  border-radius:2px;
+  transition:transform .12s,box-shadow .12s;
+  cursor:pointer;border:none;
+}
+.btn-primary{
+  background:#1a3d2e;color:#f5f1e8;
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 14px -4px rgba(26,61,46,0.4);}
+.btn-secondary{
+  background:transparent;color:#1a3d2e;
+  border:1px solid #1a3d2e;
+}
+.btn-secondary:hover{background:#1a3d2e;color:#f5f1e8;}
+@media(max-width:680px){
+  .hero{padding:48px 24px 40px;}
+  .hero h1{font-size:36px;}
+  .hero-lede{font-size:16px;}
+  .hero-stats{gap:32px;}
+  .stat-num{font-size:28px;}
+}
+
+/* ============ Section base ============ */
+section{padding:80px 24px;}
+.section-inner{max-width:1100px;margin:0 auto;}
+.section-eyebrow{
+  font-size:12px;letter-spacing:2px;
+  color:#c8523a;text-transform:uppercase;font-weight:600;
+  margin-bottom:12px;
+}
+.section-title{
+  font-family:Georgia,"Songti SC","Source Han Serif SC",serif;
+  font-size:36px;line-height:1.2;color:#1a3d2e;
+  font-weight:700;letter-spacing:-0.5px;
+  margin-bottom:16px;
+}
+.section-lede{font-size:16px;color:#5a5852;max-width:680px;margin-bottom:48px;}
+
+/* ============ Skill Wall ============ */
+#skills{background:#ebe4d2;}
+.skill-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:1px;
+  background:#d4ccb7;
+  border:1px solid #d4ccb7;
+}
+.skill-card{
+  background:#f5f1e8;
+  padding:28px 24px;
+  cursor:pointer;
+  transition:background .15s;
+  display:flex;flex-direction:column;
+  min-height:220px;
+}
+.skill-card:hover{background:#fff;}
+.skill-card-head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:12px;
+}
+.skill-name{
+  font-family:"SF Mono",Consolas,Monaco,monospace;
+  font-size:14px;font-weight:600;color:#1a3d2e;
+}
+.skill-badges{display:flex;gap:6px;flex-shrink:0;margin-left:8px;}
+.badge{
+  font-size:11px;font-weight:600;
+  padding:3px 8px;
+  background:#1a3d2e;color:#f5f1e8;
+  font-family:"SF Mono",monospace;
+}
+.badge-quota{background:#c8523a;}
+.skill-purpose{
+  font-size:14px;color:#3a3a36;
+  margin-bottom:14px;line-height:1.55;flex-grow:1;
+}
+.skill-triggers{
+  font-size:12px;color:#7a7770;
+  border-top:1px dashed #c5bda7;padding-top:12px;
+  line-height:1.55;
+}
+.skill-triggers strong{color:#1a3d2e;font-weight:600;}
+
+/* ============ Runtime Tabs ============ */
+#runtimes{background:#f5f1e8;}
+.tabs{display:flex;gap:0;border-bottom:1px solid #d4ccb7;margin-bottom:32px;flex-wrap:wrap;}
+.tab{
+  padding:14px 22px;
+  font-size:14px;font-weight:600;
+  color:#7a7770;
+  cursor:pointer;
+  background:none;border:none;
+  border-bottom:2px solid transparent;
+  transition:all .15s;
+  margin-bottom:-1px;
+  font-family:inherit;
+}
+.tab:hover{color:#1a3d2e;}
+.tab.active{
+  color:#1a3d2e;
+  border-bottom-color:#c8523a;
+}
+.tab-icon{display:inline-block;width:18px;text-align:center;margin-right:8px;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeIn .25s ease-out;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.panel-grid{
+  display:grid;grid-template-columns:300px 1fr;gap:32px;
+  align-items:start;
+}
+@media(max-width:760px){.panel-grid{grid-template-columns:1fr;}}
+.panel-meta h3{
+  font-family:Georgia,"Songti SC",serif;
+  font-size:22px;color:#1a3d2e;
+  margin-bottom:10px;font-weight:700;
+}
+.panel-meta p{font-size:14px;color:#5a5852;line-height:1.65;margin-bottom:14px;}
+.panel-meta .who{
+  font-size:12px;color:#c8523a;text-transform:uppercase;
+  letter-spacing:1.5px;font-weight:600;margin-bottom:6px;
+}
+.code-block{
+  background:#1a1f1d;color:#d4d0c4;
+  padding:20px 22px;
+  font-size:13px;line-height:1.7;
+  border-radius:2px;
+  overflow-x:auto;
+  font-family:"SF Mono","JetBrains Mono",Consolas,monospace;
+}
+.code-block .comment{color:#6b8a7a;}
+.code-block .cmd{color:#e8d49e;}
+.code-block .kw{color:#c8523a;}
+.code-block .str{color:#a4c592;}
+
+/* ============ Architecture Strip ============ */
+#arch{
+  background:linear-gradient(180deg,#1a3d2e 0%,#0f2820 100%);
+  color:#e8e2d0;
+}
+#arch .section-eyebrow{color:#e8b04a;}
+#arch .section-title{color:#f5f1e8;}
+#arch .section-lede{color:#b8b3a3;}
+.arch-stack{
+  display:flex;flex-direction:column;gap:1px;
+  background:#0f2820;
+  border:1px solid #2d5546;
+  font-family:"SF Mono",Consolas,monospace;
+  font-size:14px;
+}
+.arch-layer{
+  padding:24px 28px;
+  background:#1a3d2e;
+  display:grid;grid-template-columns:80px 1fr 1fr;gap:24px;
+  align-items:center;
+}
+.arch-layer-num{
+  font-family:Georgia,serif;font-size:28px;
+  color:#e8b04a;font-style:italic;font-weight:700;
+}
+.arch-layer-name{font-weight:600;color:#f5f1e8;}
+.arch-layer-desc{color:#9ab3a7;font-size:13px;line-height:1.55;}
+@media(max-width:680px){
+  .arch-layer{grid-template-columns:1fr;gap:8px;padding:18px 20px;}
+  .arch-layer-num{font-size:22px;}
+}
+
+/* ============ Article ============ */
+#article{background:#ebe4d2;}
+.article-wrap{
+  max-width:760px;margin:0 auto;
+  background:#f5f1e8;
+  padding:60px 56px;
+  border:1px solid #d4ccb7;
+}
+@media(max-width:680px){.article-wrap{padding:40px 24px;}}
+.article-wrap h2{
+  font-family:Georgia,"Songti SC",serif;
+  font-size:28px;color:#1a3d2e;
+  margin:48px 0 18px;
+  padding-bottom:10px;
+  border-bottom:1px solid #d4ccb7;
+  font-weight:700;line-height:1.3;
+}
+.article-wrap h2:first-child{margin-top:0;}
+.article-wrap h3{
+  font-size:18px;color:#1a3d2e;
+  margin:32px 0 14px;font-weight:700;
+}
+.article-wrap p{margin:14px 0;color:#3a3a36;}
+.article-wrap ul,.article-wrap ol{padding-left:24px;margin:14px 0;}
+.article-wrap li{margin:8px 0;color:#3a3a36;}
+.article-wrap code{
+  background:#ebe4d2;color:#8a3a26;
+  padding:2px 7px;font-size:13px;border-radius:2px;
+}
+.article-wrap pre{
+  background:#1a1f1d;color:#d4d0c4;
+  padding:18px 22px;margin:18px 0;
+  font-size:13px;line-height:1.65;
+  border-radius:2px;overflow-x:auto;
+}
+.article-wrap pre code{background:none;color:inherit;padding:0;}
+.article-wrap blockquote{
+  margin:18px 0;padding:14px 18px;
+  background:#fff8e8;
+  border-left:3px solid #e8b04a;
+  color:#6a5828;font-size:14px;
+}
+.article-wrap strong{color:#1a3d2e;font-weight:700;}
+.article-wrap a{color:#c8523a;border-bottom:1px solid #c8523a;}
+.article-wrap table{
+  width:100%;border-collapse:collapse;margin:18px 0;
+  font-size:13px;
+}
+.article-wrap th{
+  background:#1a3d2e;color:#f5f1e8;
+  padding:10px 12px;text-align:left;font-weight:600;
+}
+.article-wrap td{padding:10px 12px;border-bottom:1px solid #d4ccb7;}
+.article-wrap tr:nth-child(even) td{background:#ebe4d2;}
+
+/* ============ Footer ============ */
+footer{
+  background:#1a3d2e;color:#9ab3a7;
+  padding:48px 24px 32px;
+  font-size:13px;
+}
+.footer-inner{
+  max-width:1100px;margin:0 auto;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:24px;
+}
+.footer-brand{color:#f5f1e8;font-family:Georgia,serif;font-size:18px;font-weight:700;}
+.footer-links{display:flex;gap:24px;}
+.footer-links a{color:#9ab3a7;transition:color .15s;}
+.footer-links a:hover{color:#e8b04a;}
+.footer-meta{font-size:11px;color:#6b8a7a;letter-spacing:1px;text-transform:uppercase;margin-top:24px;text-align:center;border-top:1px solid #2d5546;padding-top:24px;}
+</style>
+</head>
+<body>
+
+<!-- ============ Top Bar ============ -->
+<nav class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">qcc<span class="brand-dot">.</span></div>
+    <div class="nav">
+      <a href="#skills">8 个 Skill</a>
+      <a href="#runtimes">4 种接入</a>
+      <a href="#arch">架构</a>
+      <a href="#article">背景文章</a>
+      <a href="https://github.com/zhanglunet/qcc" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ Hero ============ -->
+<section class="hero">
+  <div class="hero-eyebrow">KYB · 尽调 · 投后监控 · 供应商准入</div>
+  <h1>把企查查塞进<br>任何一个 <span class="accent">AI Agent</span>。</h1>
+  <p class="hero-lede">
+    一份开源接入层，把 <strong>agent.qcc.com</strong> 的 6 个 MCP server、146 个 tool，
+    封装成 Python / TypeScript 客户端 + 8 个工作流 skill。
+    Claude Code、OpenClaw、Hermes、命令行——同一套 skill 目录，四个运行时无缝复用。
+  </p>
+
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">6</div><div class="stat-label">MCP Server</div></div>
+    <div class="stat"><div class="stat-num">146</div><div class="stat-label">原子 Tool</div></div>
+    <div class="stat"><div class="stat-num">8</div><div class="stat-label">工作流 Skill</div></div>
+    <div class="stat"><div class="stat-num">4</div><div class="stat-label">接入运行时</div></div>
+    <div class="stat"><div class="stat-num">2h</div><div class="stat-label">从 0 到推送</div></div>
+  </div>
+
+  <div class="hero-cta">
+    <a class="btn btn-primary" href="https://github.com/zhanglunet/qcc" target="_blank" rel="noopener">
+      Star on GitHub →
+    </a>
+    <a class="btn btn-secondary" href="#runtimes">5 分钟跑通</a>
+  </div>
+</section>
+
+<!-- ============ Skill Wall ============ -->
+<section id="skills">
+  <div class="section-inner">
+    <div class="section-eyebrow">Workflow Skills</div>
+    <h2 class="section-title">按"尽调动作"切，<br>不按"工具"切。</h2>
+    <p class="section-lede">
+      用户说的不是"调 get_company_registration_info"，而是"拉一下小米的工商摘要"。
+      Skill 把"业务语言"翻译成"工具调用序列"，每个 skill 就是 SKILL.md + manifest.yaml 两个文件。
+    </p>
+
+    <div class="skill-grid">
+
+      <div class="skill-card">
+        <div class="skill-card-head">
+          <div class="skill-name">qcc-anchor</div>
+          <div class="skill-badges"><span class="badge">2 tool</span><span class="badge badge-quota">1×</span></div>
+        </div>
+        <div class="skill-purpose">实体锚定 — 把企业名 / 简称 / 品牌名 / 股票简称解析成唯一 USCC。所有下游 skill 的强制前置。</div>
+        <div class="skill-triggers"><strong>触发</strong>：锁定主体 / 确认公司 / 找一下 XXX</div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head">
+          <div class="skill-name">qcc-basic-profile</div>
+          <div class="skill-badges"><span class="badge">8 tool</span><span class="badge badge-quota">8×</span></div>
+        </div>
+        <div class="skill-purpose">工商基础摘要 — 一次性拉齐登记 / 简介 / 联系 / 主要人员 / 税务 / 分支 / 上市 / 年报。KYB 初步首选。</div>
+        <div class="skill-triggers"><strong>触发</strong>：查工商信息 / 拉 KYB 摘要 / 做基础尽调</div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head">
+          <div class="skill-name">qcc-ownership-trace</div>
+          <div class="skill-badges"><span class="badge">5 tool</span><span class="badge badge-quota">5×</span></div>
+        </div>
+        <div class="skill-purpose">股权穿透 — 实控人、UBO、对外投资、股东背景。授信前合规必查。</div>
+        <div class="skill-triggers"><strong>触发</strong>：实控人是谁 / 穿透股权 / UBO</div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head">
+          <div class="skill-name">qcc-risk-screen</div>
+          <div class="skill-badges"><span class="badge">34 tool</span><span class="badge badge-quota">12/19/34</span></div>
+        </div>
+        <div class="skill-purpose">司法风险全维度 — 失信 / 限消 / 限出 / 经营异常 / 严重违法 / 行政处罚 / 税务异常 / 破产 / 抵质押。支持 quick/default/full 三档配额。</div>
+        <div class="skill-triggers"><strong>触发</strong>：查司法风险 / 授信前风险扫描</div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head">
+          <div class="skill-name">qcc-ipr-portfolio</div>
+          <div class="skill-badges"><span class="badge">18 tool</span><span class="badge badge-quota">8/10/18</span></div>
+        </div>
+        <div class="skill-purpose">知识产权矩阵 — 专利 / 商标 / 著作权 / 软著 / 数字资产 / 自媒体账号。看一家公司的"软实力指纹"。</div>
+        <div class="skill-triggers"><strong>触发</strong>：查专利 / 商标 / 自媒体矩阵</div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head">
+          <div class="skill-name">qcc-operation-pulse</div>
+          <div class="skill-badges"><span class="badge">35 tool</span><span class="badge badge-quota">6/12/35</span></div>
+        </div>
+        <div class="skill-purpose">经营动态 — 资质 / 招投标 / 招聘 / 融资 / 舆情 / 公告 / 政府约谈 / 抽检 / 召回。投后监控/竞品分析用。</div>
+        <div class="skill-triggers"><strong>触发</strong>：中标记录 / 融资历史 / 舆情</div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head">
+          <div class="skill-name">qcc-executive-background</div>
+          <div class="skill-badges"><span class="badge">42 tool</span><span class="badge badge-quota">20/42</span></div>
+        </div>
+        <div class="skill-purpose">高管个人背调 — 双参数 (USCC + 人名)，含历史轨迹。法代任职 / 失信 / 限消 / 关联企业。</div>
+        <div class="skill-triggers"><strong>触发</strong>：法代背调 / 高管个人风险</div>
+      </div>
+
+      <div class="skill-card">
+        <div class="skill-card-head">
+          <div class="skill-name">qcc-person-portfolio</div>
+          <div class="skill-badges"><span class="badge">7 tool</span><span class="badge badge-quota">7/人</span></div>
+        </div>
+        <div class="skill-purpose">自然人对外公司清单 — 反查某人作为董监高 / 法代 / 控股 / 关联的所有公司，合并去重导出 8 sheet Excel。</div>
+        <div class="skill-triggers"><strong>触发</strong>：查...所有公司 / 控制了哪些企业 / 法人版图</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ Runtime Tabs ============ -->
+<section id="runtimes">
+  <div class="section-inner">
+    <div class="section-eyebrow">Four Runtimes, One Skill Folder</div>
+    <h2 class="section-title">一鱼四吃。</h2>
+    <p class="section-lede">
+      同一套 <code style="background:#ebe4d2;padding:2px 8px;color:#8a3a26;">skills/</code> 目录，
+      Claude Code 拿去做对话尽调，OpenClaw 拿去做 IM 助手，Hermes 拿去做服务端编排，Python/TS 拿去做批量脚本。
+      每一种都是 5 行内的 install snippet。
+    </p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-target="t-claude"><span class="tab-icon">◐</span>Claude Code</button>
+      <button class="tab" data-target="t-openclaw"><span class="tab-icon">◑</span>OpenClaw 龙虾</button>
+      <button class="tab" data-target="t-hermes"><span class="tab-icon">◒</span>Hermes</button>
+      <button class="tab" data-target="t-cli"><span class="tab-icon">◓</span>Python / TS CLI</button>
+    </div>
+
+    <div class="tab-panel active" id="t-claude">
+      <div class="panel-grid">
+        <div class="panel-meta">
+          <div class="who">最适合</div>
+          <h3>一线员工 · 调研 · 临时尽调</h3>
+          <p>Claude Code 原生支持 MCP Streamable HTTP + <code>~/.claude/skills/</code> 目录。配好 <code>.mcp.json</code> + 软链 skill 即可。用户说"查一下小米的基础尽调"，自动匹配并按 flow 调 MCP tool。</p>
+        </div>
+        <pre class="code-block"><span class="comment"># 1. 配 MCP server</span>
+<span class="cmd">cp</span> .mcp.json.example .mcp.json
+<span class="cmd">export</span> <span class="kw">QCC_API_KEY</span>=<span class="str">你的_token</span>
+
+<span class="comment"># 2. 装 8 个 skill 到用户级</span>
+<span class="cmd">cd</span> skills
+<span class="cmd">for</span> d in qcc-*; <span class="cmd">do</span>
+  <span class="cmd">ln</span> -s <span class="str">"$(pwd)/$d"</span> ~/.claude/skills/$d
+<span class="cmd">done</span>
+
+<span class="comment"># 3. 重开 Claude Code → 自然语言调用</span></pre>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="t-openclaw">
+      <div class="panel-grid">
+        <div class="panel-meta">
+          <div class="who">最适合</div>
+          <h3>常驻本地 Agent · 跨 IM 消息侧</h3>
+          <p>OpenClaw（龙虾）通过 <code>~/.openclaw/openclaw.json5</code> 装载 MCP server，支持 HTTP transport 直连。装好后在 WhatsApp / Slack / Discord 里直接对 bot 说人话即可触发。</p>
+        </div>
+        <pre class="code-block"><span class="comment"># 1. 合并 6 个 server 到 openclaw.json5</span>
+<span class="comment">#    (片段见 skills/_openclaw.md)</span>
+
+<span class="comment"># 2. 注入 env + 重启</span>
+<span class="cmd">export</span> <span class="kw">QCC_API_KEY</span>=<span class="str">你的_token</span>
+<span class="cmd">openclaw</span> gateway restart
+
+<span class="comment"># 3. 验证</span>
+<span class="cmd">openclaw</span> skills status
+<span class="comment"># → 6 行 qcc-* connected</span>
+
+<span class="cmd">openclaw</span> skills info qcc-company
+<span class="comment"># → 列出 16 个 tool</span></pre>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="t-hermes">
+      <div class="panel-grid">
+        <div class="panel-meta">
+          <div class="who">最适合</div>
+          <h3>服务端编排 · 多用户 · 配额管理</h3>
+          <p>自定义 Agent / LLM 框架走 Hermes 协议：读 <code>_inventory.json</code> 注册 146 tool，读 <code>manifest.yaml</code> 装载 8 工作流，模板渲染 <code>{{anchor.uscc}}</code> 等占位。<code>_hermes.md</code> 里有最小 Python loader。</p>
+        </div>
+        <pre class="code-block"><span class="comment"># 三步走</span>
+
+<span class="comment"># 1. 注册 146 个 tool</span>
+inventory = json.load(open(<span class="str">"skills/_inventory.json"</span>))
+
+<span class="comment"># 2. 装载 8 个 workflow skill</span>
+<span class="cmd">for</span> skill_dir in glob(<span class="str">"skills/qcc-*"</span>):
+    manifest = yaml.safe_load(
+        open(f<span class="str">"{skill_dir}/manifest.yaml"</span>)
+    )
+    agent.register_workflow(manifest)
+
+<span class="comment"># 3. 用任意 MCP HTTP SDK 调 .mcp.json 里的 server</span>
+result = mcp_client.call(
+    server=<span class="str">"company"</span>,
+    tool=<span class="str">"get_company_by_query"</span>,
+    args={<span class="str">"searchKey"</span>: user_input},
+)</pre>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="t-cli">
+      <div class="panel-grid">
+        <div class="panel-meta">
+          <div class="who">最适合</div>
+          <h3>脚本任务 · 数据管道 · Jupyter</h3>
+          <p>Python (<code>qcc-py</code>) 和 TypeScript (<code>qcc-ts</code>) 双客户端，原生 async/await。<code>QccClient.from_env()</code> 自动读 <code>QCC_API_KEY</code>，<code>.call(server, tool, args)</code> 同步式调用。</p>
+        </div>
+        <pre class="code-block"><span class="comment"># Python CLI</span>
+<span class="cmd">qcc-py</span> servers
+<span class="cmd">qcc-py</span> tools company
+<span class="cmd">qcc-py</span> call company get_company_by_query \
+  -a <span class="str">'{"searchKey":"小米科技"}'</span>
+
+<span class="comment"># Python SDK</span>
+<span class="kw">from</span> qcc_client <span class="kw">import</span> QccClient, Server
+
+client = QccClient.from_env()
+result = <span class="kw">await</span> client.call(
+    Server.COMPANY,
+    <span class="str">"get_company_by_query"</span>,
+    {<span class="str">"searchKey"</span>: <span class="str">"小米科技"</span>},
+)</pre>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ Architecture ============ -->
+<section id="arch">
+  <div class="section-inner">
+    <div class="section-eyebrow">Architecture</div>
+    <h2 class="section-title">四层封装。<br>每层都有自己的事实源。</h2>
+    <p class="section-lede">
+      最下层是 MCP 协议本身，最上层是用户的自然语言。中间每多一层都是为了让 AI Agent 少推理一点、少出错一点。
+    </p>
+
+    <div class="arch-stack">
+      <div class="arch-layer">
+        <div class="arch-layer-num">L4</div>
+        <div class="arch-layer-name">8 工作流 Skill</div>
+        <div class="arch-layer-desc">按尽调动作切，每个 skill 一个目录 (SKILL.md + manifest.yaml)。Claude Code / Hermes / OpenClaw 共享。</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-num">L3</div>
+        <div class="arch-layer-name">_inventory.json</div>
+        <div class="arch-layer-desc">146 个 tool 的全量入参 / 出参 schema 快照。单一事实源，Hermes 启动时直接 register。</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-num">L2</div>
+        <div class="arch-layer-name">Python / TS 客户端</div>
+        <div class="arch-layer-desc">QccClient.call(server, tool, args) 异步封装，做完 MCP session 管理 / unwrap / 错误码标准化。</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-num">L1</div>
+        <div class="arch-layer-name">MCP Streamable HTTP</div>
+        <div class="arch-layer-desc">agent.qcc.com/mcp/&lt;server&gt;/stream，Bearer token 鉴权。直接对话上游 6 个 server。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Article ============ -->
+<section id="article">
+  <div class="section-inner">
+    <div class="article-wrap">
+
+<h2>缘起：为什么要做这件事</h2>
+<p>做客户准入、供应商入库、投后监控时，绕不开三件事：</p>
+<ul>
+<li><strong>KYB（Know Your Business）</strong>：合同主体真伪、注册资本实缴、法代是谁</li>
+<li><strong>司法风险</strong>：被执行、失信、限消、限出境、行政处罚</li>
+<li><strong>关联版图</strong>：实控人是谁、UBO 穿透到自然人、关键人对外控制了多少家公司</li>
+</ul>
+<p>这三件事手工查可以，但有两个问题：<strong>慢</strong>（一家公司散在十几个页面，复制粘贴半小时）、<strong>断</strong>（信息进不了 Agent 编排，AI 用不上）。所以目标变成：<strong>把企查查 146 个查询点变成 AI Agent 原生可调用的工具集</strong>。</p>
+
+<h2>选型：四条路只剩一条</h2>
+<table>
+<thead><tr><th>选项</th><th>状态</th><th>否决理由</th></tr></thead>
+<tbody>
+<tr><td>Aily</td><td>❌</td><td>不开放 API 直连，只能在 Aily 自己产品里用</td></tr>
+<tr><td>OpenClaw 内置</td><td>❌</td><td>当时不稳定，工具粒度不可控</td></tr>
+<tr><td>QCC 企业 REST API</td><td>⏸️</td><td>3 元/次，量起来贵；需走采购</td></tr>
+<tr><td><strong>QCC Agent MCP</strong></td><td>✅</td><td>免费 tier + 日配额、Streamable HTTP、6 个 server 全覆盖</td></tr>
+</tbody>
+</table>
+
+<h2>上游长这样：6 server / 146 tool</h2>
+<p>QCC 把数据按业务域切成了 6 个独立的 MCP server，挂在 <code>https://agent.qcc.com/mcp/&lt;server&gt;/stream</code>，Bearer token 鉴权：</p>
+<table>
+<thead><tr><th>server</th><th>tool 数</th><th>覆盖</th></tr></thead>
+<tbody>
+<tr><td><code>company</code></td><td>16</td><td>工商、股东、UBO、对外投资、年报、财务、分支、上市</td></tr>
+<tr><td><code>risk</code></td><td>35</td><td>司法、失信、限消限出、经营异常、严重违法、行政处罚、税务、破产、抵质押</td></tr>
+<tr><td><code>ipr</code></td><td>18</td><td>专利、商标、著作权、数字资产、自媒体矩阵</td></tr>
+<tr><td><code>operation</code></td><td>35</td><td>资质、招投标、招聘、融资、舆情、公告、政府约谈、抽检、召回</td></tr>
+<tr><td><code>executive</code></td><td>42</td><td>法代/高管个人背调（双参数 USCC + 人名）</td></tr>
+<tr><td><code>history</code></td><td>—</td><td>企业历史轨迹（需企业实名认证）</td></tr>
+</tbody>
+</table>
+
+<h2>5 分钟跑通</h2>
+<pre><code># 1) 配 key
+git clone https://github.com/zhanglunet/qcc &amp;&amp; cd qcc
+cp .env.example .env
+# 编辑 .env，填 QCC_API_KEY（裸 token，不带 Bearer 前缀）
+
+# 2) 装 Python 客户端 + skills 额外依赖
+cd python &amp;&amp; python3.10 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install -e ".[skills]"
+
+# 3) 跑 qcc-person-portfolio
+python ../skills/qcc-person-portfolio/run.py \
+  --person "雷军" \
+  --anchor-by-name "小米科技"
+# → ./雷军_companies.xlsx，8 sheet，约 200 家关联公司
+</code></pre>
+
+<h2>四条铁律</h2>
+<h3>1. 锚定先行</h3>
+<p>用户给非 USCC 时，<strong>第一步永远是</strong> <code>qcc-company:get_company_by_query</code>。返回多候选时<strong>必须让用户选</strong>，禁止自动取 top1——QCC 自己的工具描述里就明令禁止了。</p>
+<blockquote><strong>真实违规案例</strong>：用户输入"腾讯科技最新工商变更"，AI 自动补全成"腾讯科技深圳有限公司"调下游，命中的是"腾讯科技（深圳）有限公司"（外资子公司），而非真正想要的运营主体。</blockquote>
+
+<h3>2. USCC 优先</h3>
+<p>锚定拿到 18 位统一社会信用代码后，<strong>所有下游调用都用 USCC 作 searchKey</strong>，不要再把原始企业名往下传。</p>
+
+<h3>3. executive server 双参数</h3>
+<p><code>qcc-executive</code> 工具组例外：必须同时提供 <code>searchKey</code>（USCC）+ <code>personName</code>（姓名）——双锚定避免同名误查。</p>
+
+<h3>4. 配额错误码</h3>
+<ul>
+<li><code>200001</code> — 鉴权格式错（检查是不是带了 Bearer 前缀）</li>
+<li><code>300008</code> — 配额超 / 风控触发</li>
+<li><code>-32001</code> — 日频率超限</li>
+</ul>
+
+<h2>已知限制</h2>
+<ul>
+<li><strong><code>history</code> server 不能用</strong>：需企业实名认证</li>
+<li><strong><code>_inventory.json</code> 会漂移</strong>：每月跑一次 dump_inventory 保持同步</li>
+<li><strong>单体 OpCo 财务字段大量"企业选择不公示"</strong>：上市集团合并数据需另查港交所 / SEC</li>
+<li><strong>境外主体不在内</strong>：开曼 / VIE 主体不在 QCC 工商数据</li>
+</ul>
+
+<h2>写在最后</h2>
+<p>整个项目的核心判断只有一个：<strong>AI Agent 时代，数据源接入的颗粒度不是"API"也不是"工具"，而是"工作流"</strong>。</p>
+<p>8 个 skill 看似只是把 146 个 tool 重新打包，但真正的价值在于把"用户一次尽调动作"沉淀成可复用、可触发、可被任意 Agent 框架消费的最小单元。Claude Code 拿去做对话式尽调，OpenClaw 拿去做 IM 侧助手，Hermes 拿去做服务端编排，Python 脚本拿去做批量导出——<strong>同一份 skill 目录，四个运行时无缝复用</strong>。</p>
+<p>仓库地址：<a href="https://github.com/zhanglunet/qcc" target="_blank" rel="noopener">github.com/zhanglunet/qcc</a></p>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ Footer ============ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">qcc<span style="color:#c8523a">.</span></div>
+    <div class="footer-links">
+      <a href="https://github.com/zhanglunet/qcc" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://agent.qcc.com/guide" target="_blank" rel="noopener">QCC Agent</a>
+      <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP Spec</a>
+    </div>
+  </div>
+  <div class="footer-meta">
+    Apache-2.0 · Open Source · Not affiliated with 企查查 / Suzhou Langdong Information Technology
+  </div>
+</footer>
+
+<script>
+  // tab switching
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.target;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === btn));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === target));
+    });
+  });
+</script>
+
+</body>
+</html>
