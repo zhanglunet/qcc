@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>把企查查塞进 AI Agent：一个下午搭完 6 server × 146 tool × 8 工作流的全过程</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f5f5f5;">
+
+<!-- ============================================================
+  WeChat 公众号粘贴说明
+  ------------------------------------------------------------
+  1. 浏览器打开本文件 → Cmd+A 全选 → Cmd+C 复制
+  2. 公众号后台 → 新建图文 → 正文区粘贴
+  3. 标题单独复制到顶部「标题」框
+  4. 摘要（可选）：用第一段引言
+  5. 封面图：建议截一张「四层封装」框架图当封面
+  6. 粘贴后检查：表格是否完整、代码块字号是否合适
+============================================================ -->
+
+<div style="max-width:677px;margin:0 auto;padding:30px 20px;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;font-size:15px;line-height:1.75;color:#3f3f3f;letter-spacing:0.05em;">
+
+<!-- 标题 -->
+<h1 style="font-size:22px;font-weight:bold;color:#1a1a1a;line-height:1.4;margin:0 0 24px 0;padding:0;text-align:center;">
+把企查查塞进 AI Agent：一个下午搭完 6 server × 146 tool × 8 工作流的全过程
+</h1>
+
+<!-- 引言 -->
+<blockquote style="margin:24px 0;padding:14px 18px;background:#f7f7f7;border-left:4px solid #1e88e5;color:#666;font-size:14px;line-height:1.7;">
+写在前面：这是 KYB / 尽调链路从 0 到 1 的接入笔记。从第一行 <code style="background:#eee;padding:1px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">.mcp.json</code> 到 GitHub 推送完成，<strong>实际工时 2 小时</strong>（16:06 起手 → 18:07 收尾），核心搭建 38 分钟（八个 skill 跑齐）。代码全部开源在 <a href="https://github.com/zhanglunet/qcc" style="color:#1e88e5;text-decoration:none;border-bottom:1px solid #1e88e5;">github.com/zhanglunet/qcc</a>（Apache-2.0），文末有 5 分钟跑通指引。
+</blockquote>
+
+<!-- ============== 一 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+一、为什么要做这件事
+</h2>
+
+<p style="margin:16px 0;">做客户准入、供应商入库、投后监控时，绕不开三件事：</p>
+
+<ul style="margin:16px 0;padding-left:24px;">
+<li style="margin:8px 0;"><strong style="color:#1a1a1a;">KYB（Know Your Business）</strong>：合同主体真伪、注册资本实缴、法代是谁</li>
+<li style="margin:8px 0;"><strong style="color:#1a1a1a;">司法风险</strong>：被执行、失信、限消、限出境、行政处罚</li>
+<li style="margin:8px 0;"><strong style="color:#1a1a1a;">关联版图</strong>：实控人是谁、UBO 穿透到自然人、关键人对外控制了多少家公司</li>
+</ul>
+
+<p style="margin:16px 0;">这三件事手工查可以，但有两个问题：</p>
+
+<ol style="margin:16px 0;padding-left:24px;">
+<li style="margin:8px 0;"><strong style="color:#1a1a1a;">慢</strong>：一家公司散在十几个页面，复制粘贴半小时</li>
+<li style="margin:8px 0;"><strong style="color:#1a1a1a;">断</strong>：信息进不了我们的 Agent 编排（OpenClaw / Hermes / Claude Code），AI 用不上</li>
+</ol>
+
+<p style="margin:16px 0;">所以目标变成：<strong style="color:#1a1a1a;background:#fff3cd;padding:2px 4px;">把企查查 146 个查询点变成 AI Agent 原生可调用的工具集</strong>。</p>
+
+<!-- ============== 二 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+二、选型：为什么是企查查 MCP
+</h2>
+
+<p style="margin:16px 0;">评估过四条路：</p>
+
+<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
+<thead>
+<tr style="background:#1e88e5;color:#ffffff;">
+<th style="padding:10px 12px;border:1px solid #1e88e5;text-align:left;">选项</th>
+<th style="padding:10px 12px;border:1px solid #1e88e5;text-align:left;">状态</th>
+<th style="padding:10px 12px;border:1px solid #1e88e5;text-align:left;">否决理由</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding:10px 12px;border:1px solid #e0e0e0;">Aily</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">❌</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">不开放 API 直连，只能在 Aily 自己的产品里用</td></tr>
+<tr style="background:#fafafa;"><td style="padding:10px 12px;border:1px solid #e0e0e0;">OpenClaw 内置</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">❌</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">当时不稳定，且工具粒度不可控</td></tr>
+<tr><td style="padding:10px 12px;border:1px solid #e0e0e0;">QCC 企业 REST API</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">⏸️</td><td style="padding:10px 12px;border:1px solid #e0e0e0;"><strong>3 元/次</strong>，量起来贵；需走采购流程</td></tr>
+<tr style="background:#e8f4fd;"><td style="padding:10px 12px;border:1px solid #e0e0e0;"><strong>QCC Agent MCP</strong></td><td style="padding:10px 12px;border:1px solid #e0e0e0;">✅</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">免费 tier + 日配额、<strong>Streamable HTTP</strong>、6 个 server 覆盖全部场景</td></tr>
+</tbody>
+</table>
+
+<p style="margin:16px 0;">最后选了 agent.qcc.com 提供的 MCP 路径——付费 REST 后续要上量再切，原型期把链路先打通最重要。</p>
+
+<!-- ============== 三 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+三、上游长这样：6 个 MCP server，146 个 tool
+</h2>
+
+<p style="margin:16px 0;">QCC 把数据按业务域切成了 6 个独立的 MCP server，每个挂在 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,'Courier New',monospace;font-size:13px;color:#c7254e;">https://agent.qcc.com/mcp/&lt;server&gt;/stream</code>，Bearer token 鉴权：</p>
+
+<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
+<thead>
+<tr style="background:#1e88e5;color:#ffffff;">
+<th style="padding:10px 12px;border:1px solid #1e88e5;text-align:left;">server</th>
+<th style="padding:10px 12px;border:1px solid #1e88e5;text-align:right;">tool 数</th>
+<th style="padding:10px 12px;border:1px solid #1e88e5;text-align:left;">覆盖</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding:10px 12px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">company</code></td><td style="padding:10px 12px;border:1px solid #e0e0e0;text-align:right;">16</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">工商、股东、UBO、对外投资、年报、财务、分支、上市</td></tr>
+<tr style="background:#fafafa;"><td style="padding:10px 12px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">risk</code></td><td style="padding:10px 12px;border:1px solid #e0e0e0;text-align:right;">35</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">司法、失信、限消限出、经营异常、严重违法、行政处罚、税务异常、破产、抵质押</td></tr>
+<tr><td style="padding:10px 12px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">ipr</code></td><td style="padding:10px 12px;border:1px solid #e0e0e0;text-align:right;">18</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">专利、商标、著作权、数字资产、自媒体矩阵</td></tr>
+<tr style="background:#fafafa;"><td style="padding:10px 12px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">operation</code></td><td style="padding:10px 12px;border:1px solid #e0e0e0;text-align:right;">35</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">资质、招投标、招聘、融资、舆情、公告、政府约谈、抽检、召回</td></tr>
+<tr><td style="padding:10px 12px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">executive</code></td><td style="padding:10px 12px;border:1px solid #e0e0e0;text-align:right;">42</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">法代/高管个人背调（<strong>双参数：USCC + 人名</strong>，含历史轨迹）</td></tr>
+<tr style="background:#fafafa;"><td style="padding:10px 12px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">history</code></td><td style="padding:10px 12px;border:1px solid #e0e0e0;text-align:right;">—</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">企业历史轨迹（需企业实名认证，免费 key 不可用）</td></tr>
+</tbody>
+</table>
+
+<p style="margin:16px 0;">146 个 tool 的入参/出参 schema 全部抓下来固化成一个 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">_inventory.json</code>——后面 Hermes 直接读这个文件注册工具，不需要再走一次 list_tools。</p>
+
+<!-- ============== 四 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+四、四层封装：从 MCP 协议到 8 个工作流 skill
+</h2>
+
+<p style="margin:16px 0;">裸 MCP tool 对 AI Agent 不友好：粒度太细，一个尽调要串十几个工具，且每个工具的调用顺序、参数依赖、配额都需要 Agent 自己推理。我们在上面叠了四层：</p>
+
+<pre style="background:#2d2d2d;color:#e8e8e8;padding:16px 18px;border-radius:6px;overflow-x:auto;font-family:Consolas,Monaco,'Courier New',monospace;font-size:13px;line-height:1.6;margin:16px 0;"><code>┌──────────────────────────────────────────────────────┐
+│ Layer 4：8 个工作流 skill（按尽调动作切）           │
+│   qcc-anchor / qcc-basic-profile / qcc-ownership-... │
+├──────────────────────────────────────────────────────┤
+│ Layer 3：_inventory.json（146 tool 单一事实源）      │
+├──────────────────────────────────────────────────────┤
+│ Layer 2：Python / TS 客户端（QccClient.call）        │
+├──────────────────────────────────────────────────────┤
+│ Layer 1：MCP Streamable HTTP（agent.qcc.com）        │
+└──────────────────────────────────────────────────────┘</code></pre>
+
+<!-- ============== 五 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+五、8 个工作流 skill：按"尽调动作"切，不按"工具"切
+</h2>
+
+<p style="margin:16px 0;">最关键的设计决策：<strong style="color:#1a1a1a;background:#fff3cd;padding:2px 4px;">skill 边界 = 用户一次尽调动作</strong>，不是工具的简单聚合。</p>
+
+<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;">
+<thead>
+<tr style="background:#1e88e5;color:#ffffff;">
+<th style="padding:10px 8px;border:1px solid #1e88e5;text-align:left;">skill</th>
+<th style="padding:10px 8px;border:1px solid #1e88e5;text-align:right;">tool</th>
+<th style="padding:10px 8px;border:1px solid #1e88e5;text-align:right;">配额</th>
+<th style="padding:10px 8px;border:1px solid #1e88e5;text-align:left;">触发短语</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding:8px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-anchor</code></td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">2</td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">1</td><td style="padding:8px;border:1px solid #e0e0e0;">"锁定主体" / "确认公司"</td></tr>
+<tr style="background:#fafafa;"><td style="padding:8px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-basic-profile</code></td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">8</td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">8</td><td style="padding:8px;border:1px solid #e0e0e0;">"查工商信息" / "拉 KYB 摘要"</td></tr>
+<tr><td style="padding:8px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-ownership-trace</code></td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">5</td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">5</td><td style="padding:8px;border:1px solid #e0e0e0;">"实控人是谁" / "穿透股权" / "UBO"</td></tr>
+<tr style="background:#fafafa;"><td style="padding:8px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-risk-screen</code></td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">34</td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">12 / 19 / 34</td><td style="padding:8px;border:1px solid #e0e0e0;">"查司法风险" / "授信前风险"</td></tr>
+<tr><td style="padding:8px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-ipr-portfolio</code></td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">18</td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">8 / 10 / 18</td><td style="padding:8px;border:1px solid #e0e0e0;">"查专利" / "查商标" / "自媒体矩阵"</td></tr>
+<tr style="background:#fafafa;"><td style="padding:8px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-operation-pulse</code></td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">35</td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">6 / 12 / 35</td><td style="padding:8px;border:1px solid #e0e0e0;">"中标记录" / "融资历史" / "舆情"</td></tr>
+<tr><td style="padding:8px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-executive-background</code></td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">42</td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">20 / 42 / 人</td><td style="padding:8px;border:1px solid #e0e0e0;">"法代背调" / "高管个人风险"</td></tr>
+<tr style="background:#fafafa;"><td style="padding:8px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-person-portfolio</code></td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">7</td><td style="padding:8px;border:1px solid #e0e0e0;text-align:right;">7 / 人</td><td style="padding:8px;border:1px solid #e0e0e0;">"查...所有公司" / "导出关联企业"</td></tr>
+</tbody>
+</table>
+
+<p style="margin:16px 0;">每个 skill 是一个目录，里面只有两个文件：</p>
+
+<ul style="margin:16px 0;padding-left:24px;">
+<li style="margin:8px 0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">SKILL.md</code> —— 给 Claude Code 用（frontmatter 里的 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">description</code> 决定触发匹配）</li>
+<li style="margin:8px 0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">manifest.yaml</code> —— 给 Hermes / 自定义 Agent 框架用（结构化 trigger + input schema + flow）</li>
+</ul>
+
+<p style="margin:16px 0;"><strong style="color:#1a1a1a;">为什么这样切？</strong>因为用户说的不是"调 get_company_registration_info"，而是"拉一下小米的工商摘要"。skill 是把"业务语言"翻译成"工具调用序列"的那一层。</p>
+
+<!-- ============== 六 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+六、四种接入形态：一鱼四吃
+</h2>
+
+<p style="margin:16px 0;">同一套 skill 目录，喂给四个不同的运行时：</p>
+
+<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
+<thead>
+<tr style="background:#1e88e5;color:#ffffff;">
+<th style="padding:10px 12px;border:1px solid #1e88e5;text-align:left;">接入形态</th>
+<th style="padding:10px 12px;border:1px solid #1e88e5;text-align:left;">适合谁</th>
+<th style="padding:10px 12px;border:1px solid #1e88e5;text-align:left;">入口</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding:10px 12px;border:1px solid #e0e0e0;"><strong>Claude Code 原生 MCP</strong></td><td style="padding:10px 12px;border:1px solid #e0e0e0;">一线员工、调研、临时尽调</td><td style="padding:10px 12px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">.mcp.json</code> + <code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">~/.claude/skills/</code></td></tr>
+<tr style="background:#fafafa;"><td style="padding:10px 12px;border:1px solid #e0e0e0;"><strong>OpenClaw（龙虾）</strong></td><td style="padding:10px 12px;border:1px solid #e0e0e0;">常驻本地 Agent、跨 IM 消息侧</td><td style="padding:10px 12px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">~/.openclaw/openclaw.json5</code></td></tr>
+<tr><td style="padding:10px 12px;border:1px solid #e0e0e0;"><strong>Hermes</strong></td><td style="padding:10px 12px;border:1px solid #e0e0e0;">服务端编排、多用户、配额管理</td><td style="padding:10px 12px;border:1px solid #e0e0e0;">读 <code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">_inventory.json</code> + 各 <code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">manifest.yaml</code></td></tr>
+<tr style="background:#fafafa;"><td style="padding:10px 12px;border:1px solid #e0e0e0;"><strong>Python / TS CLI 或 SDK</strong></td><td style="padding:10px 12px;border:1px solid #e0e0e0;">脚本任务、数据管道、Jupyter</td><td style="padding:10px 12px;border:1px solid #e0e0e0;"><code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-py</code> / <code style="background:#f0f0f0;padding:2px 5px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:12px;color:#c7254e;">qcc-ts</code></td></tr>
+</tbody>
+</table>
+
+<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;margin:28px 0 12px 0;">A. Claude Code 原生 MCP（最快）</h3>
+
+<pre style="background:#2d2d2d;color:#e8e8e8;padding:16px 18px;border-radius:6px;overflow-x:auto;font-family:Consolas,Monaco,'Courier New',monospace;font-size:13px;line-height:1.6;margin:16px 0;"><code>cp .mcp.json.example .mcp.json   # 6 个 server 已配好
+for d in qcc-*; do
+  ln -s "$(pwd)/$d" ~/.claude/skills/$d
+done</code></pre>
+
+<p style="margin:16px 0;">重开 Claude Code，用户说"查一下小米科技的基础尽调"，Claude 自动匹配 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">qcc-basic-profile</code> 并按 flow 调原生 MCP tool。</p>
+
+<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;margin:28px 0 12px 0;">B. OpenClaw（龙虾）</h3>
+
+<pre style="background:#2d2d2d;color:#e8e8e8;padding:16px 18px;border-radius:6px;overflow-x:auto;font-family:Consolas,Monaco,'Courier New',monospace;font-size:13px;line-height:1.6;margin:16px 0;"><code># 1) 把 6 个 server 合并到 ~/.openclaw/openclaw.json5
+# 2) 注入 env + 重启
+export QCC_API_KEY=你的_token
+openclaw gateway restart
+# 3) 验证
+openclaw skills status              # 6 行 qcc-* connected
+openclaw skills info qcc-company    # 列出 16 个 tool</code></pre>
+
+<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;margin:28px 0 12px 0;">C. Hermes（自定义 Agent 框架）</h3>
+
+<p style="margin:16px 0;">三步：</p>
+
+<ol style="margin:16px 0;padding-left:24px;">
+<li style="margin:8px 0;">读 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">skills/_inventory.json</code> 注册 146 个 MCP tool</li>
+<li style="margin:8px 0;">读 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">skills/qcc-*/manifest.yaml</code> 装载 8 个工作流</li>
+<li style="margin:8px 0;">用任意 MCP HTTP 客户端 SDK 连 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">.mcp.json</code> 里的 6 个 server，模板渲染 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">{{anchor.uscc}}</code> 等占位</li>
+</ol>
+
+<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;margin:28px 0 12px 0;">D. Python / TS CLI</h3>
+
+<pre style="background:#2d2d2d;color:#e8e8e8;padding:16px 18px;border-radius:6px;overflow-x:auto;font-family:Consolas,Monaco,'Courier New',monospace;font-size:13px;line-height:1.6;margin:16px 0;"><code>import asyncio
+from qcc_client import QccClient, Server
+
+async def main():
+    client = QccClient.from_env()
+    result = await client.call(
+        Server.COMPANY,
+        "get_company_by_query",
+        {"searchKey": "小米科技"},
+    )
+    print(result)
+
+asyncio.run(main())</code></pre>
+
+<p style="margin:16px 0;">CLI 同样的事：</p>
+
+<pre style="background:#2d2d2d;color:#e8e8e8;padding:16px 18px;border-radius:6px;overflow-x:auto;font-family:Consolas,Monaco,'Courier New',monospace;font-size:13px;line-height:1.6;margin:16px 0;"><code>qcc-py servers                          # 6 个 server
+qcc-py tools company                    # 16 个 tool
+qcc-py call company get_company_by_query -a '{"searchKey":"小米科技"}'</code></pre>
+
+<!-- ============== 七 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+七、5 分钟跑通：雷军 → 200 家关联公司
+</h2>
+
+<p style="margin:16px 0;">光说不练假把式。下面这套命令，从 clone 到出 Excel 大概 5 分钟：</p>
+
+<pre style="background:#2d2d2d;color:#e8e8e8;padding:16px 18px;border-radius:6px;overflow-x:auto;font-family:Consolas,Monaco,'Courier New',monospace;font-size:13px;line-height:1.6;margin:16px 0;"><code># 1) 配 key
+git clone https://github.com/zhanglunet/qcc && cd qcc
+cp .env.example .env
+# 编辑 .env，填上 QCC_API_KEY（裸 token，不带 Bearer 前缀）
+
+# 2) 装 Python 客户端 + skills 额外依赖（openpyxl）
+cd python && python3.10 -m venv .venv && source .venv/bin/activate
+pip install -e ".[skills]"
+
+# 3) 跑 qcc-person-portfolio —— 反查雷军在企查查全库的对外公司
+python ../skills/qcc-person-portfolio/run.py \
+  --person "雷军" \
+  --anchor-by-name "小米科技"
+# → ./雷军_companies.xlsx，8 sheet，约 200 家关联公司</code></pre>
+
+<p style="margin:16px 0;">打开 xlsx，主 sheet "汇总（去重）" 按企业名称去重，每一行标注这家公司是从哪几个维度命中的：</p>
+
+<ul style="margin:16px 0;padding-left:24px;">
+<li style="margin:6px 0;">当前董监高任职 / 历史董监高任职</li>
+<li style="margin:6px 0;">当前法定代表人 / 历史法定代表人</li>
+<li style="margin:6px 0;">控制企业（可能截断 100 条）</li>
+<li style="margin:6px 0;">关联企业</li>
+</ul>
+
+<p style="margin:16px 0;">这套脚本背后串了 1 个 anchor + 6 个 executive 工具，<strong style="color:#1a1a1a;">所有调用都用 (USCC, 人名) 双参数锚定</strong>——避免重名误锁。</p>
+
+<!-- ============== 八 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+八、四条铁律：所有接入形态共享的调用规范
+</h2>
+
+<p style="margin:16px 0;">无论你走哪种接入形态，下面四条规则都要遵守：</p>
+
+<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;margin:24px 0 12px 0;">1. 锚定先行</h3>
+
+<p style="margin:16px 0;">用户给非 USCC（简称 / 品牌名 / 股票简称）时，<strong style="color:#1a1a1a;">第一步永远是</strong> <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">qcc-company:get_company_by_query</code>。</p>
+
+<p style="margin:16px 0;">返回多个候选时，<strong style="color:#d32f2f;">必须让用户选，禁止自动取 top1</strong>——QCC 自己的工具描述里就明令禁止了。</p>
+
+<blockquote style="margin:16px 0;padding:12px 16px;background:#fff3cd;border-left:4px solid #ff9800;color:#5f4c00;font-size:14px;">
+<strong>真实违规案例</strong>：用户输入"腾讯科技最新工商变更"，AI 自动补全成"腾讯科技深圳有限公司"调下游，命中的是"腾讯科技（深圳）有限公司"（外资子公司），而不是用户真正想要的运营主体"深圳市腾讯计算机系统有限公司"。
+</blockquote>
+
+<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;margin:24px 0 12px 0;">2. USCC 优先</h3>
+
+<p style="margin:16px 0;">锚定拿到 18 位统一社会信用代码（正则 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">[0-9A-HJ-NPQRTUWXY]{18}</code>）后，<strong style="color:#1a1a1a;">所有下游调用都用 USCC 作 searchKey</strong>，不要再把原始企业名往下传。</p>
+
+<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;margin:24px 0 12px 0;">3. executive server 双参数</h3>
+
+<p style="margin:16px 0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">qcc-executive</code> 工具组例外：必须同时提供 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">searchKey</code>（USCC）+ <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">personName</code>（姓名）——双锚定，避免同名误查。</p>
+
+<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;margin:24px 0 12px 0;">4. 配额错误码</h3>
+
+<ul style="margin:16px 0;padding-left:24px;">
+<li style="margin:6px 0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">200001</code> —— 鉴权格式错（检查是不是带了 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">Bearer</code> 前缀）</li>
+<li style="margin:6px 0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">300008</code> —— 配额超 / 风控触发</li>
+<li style="margin:6px 0;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">-32001</code> —— 日频率超限</li>
+</ul>
+
+<!-- ============== 九 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+九、已知限制 + 后续路线
+</h2>
+
+<p style="margin:16px 0;">诚实地列一下没解决的：</p>
+
+<ul style="margin:16px 0;padding-left:24px;">
+<li style="margin:10px 0;"><strong style="color:#1a1a1a;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">history</code> server 不能用</strong>：需要企业实名认证，免费 key 不行。拿到 enterprise key 后跑一次 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">python -m qcc_client.dump_inventory &gt; skills/_inventory.json</code> 就能并入，再补一个 <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">qcc-historical-trail</code> skill 即可</li>
+<li style="margin:10px 0;"><strong style="color:#1a1a1a;"><code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-family:Consolas,Monaco,monospace;font-size:13px;color:#c7254e;">_inventory.json</code> 会漂移</strong>：是 T+0 快照，QCC 服务端工具改名/增减不自动反映——<strong>每月跑一次</strong> dump_inventory 保持同步</li>
+<li style="margin:10px 0;"><strong style="color:#1a1a1a;">单体 OpCo 财务字段大量"企业选择不公示"</strong>：上市集团合并数据需另查港交所 / SEC</li>
+<li style="margin:10px 0;"><strong style="color:#1a1a1a;">境外主体不在内</strong>：开曼 / VIE 主体不在 QCC 工商数据，只能查境内 OpCo</li>
+</ul>
+
+<!-- ============== 十 ============== -->
+<h2 style="font-size:19px;font-weight:bold;color:#1e88e5;margin:40px 0 16px 0;padding-bottom:8px;border-bottom:2px solid #e8e8e8;">
+十、写在最后
+</h2>
+
+<p style="margin:16px 0;">整个项目的核心判断只有一个：<strong style="color:#1a1a1a;background:#fff3cd;padding:2px 4px;">AI Agent 时代，数据源接入的颗粒度不是"API"也不是"工具"，而是"工作流"</strong>。</p>
+
+<p style="margin:16px 0;">8 个 skill 看似只是把 146 个 tool 重新打包，但真正的价值在于把"用户一次尽调动作"沉淀成可复用、可触发、可被任意 Agent 框架消费的最小单元。Claude Code 拿去做对话式尽调，OpenClaw 拿去做 IM 侧助手，Hermes 拿去做服务端编排，Python 脚本拿去做批量导出——同一份 skill 目录，四个运行时无缝复用。</p>
+
+<div style="margin:32px 0;padding:20px;background:linear-gradient(135deg,#1e88e5 0%,#1565c0 100%);border-radius:8px;color:#ffffff;text-align:center;">
+<p style="margin:0 0 8px 0;font-size:14px;opacity:0.9;">仓库地址（Apache-2.0 开源）</p>
+<p style="margin:0;font-size:18px;font-weight:bold;letter-spacing:0.5px;">github.com/zhanglunet/qcc</p>
+</div>
+
+<p style="margin:16px 0;">如果你也在做 KYB / 尽调 / 投后监控 / 供应商准入，欢迎 fork、提 issue、交换打法。</p>
+
+<!-- 分割线 -->
+<hr style="border:none;border-top:1px solid #e0e0e0;margin:40px 0 24px 0;">
+
+<!-- 公众号常见尾部 -->
+<p style="margin:16px 0;font-size:13px;color:#999;text-align:center;line-height:1.8;">
+转载请保留作者署名 &amp; 仓库链接<br>
+开源地址：github.com/zhanglunet/qcc
+</p>
+
+</div>
+
+</body>
+</html>

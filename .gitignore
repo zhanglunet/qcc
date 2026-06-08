@@ -12,3 +12,13 @@ dist/
 build/
 *.tsbuildinfo
 .DS_Store
+
+# defensive: skill 跑出来的尽调产物默认不入库（含真实自然人/企业数据）
+*.xlsx
+*.xls
+*.csv
+!skills/**/example_*.csv
+
+# cloudflare pages local build cache
+site/.wrangler/
+site/dist/
