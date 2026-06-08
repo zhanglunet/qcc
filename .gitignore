@@ -19,6 +19,6 @@ build/
 *.csv
 !skills/**/example_*.csv
 
-# cloudflare pages local build cache
-site/.wrangler/
+# cloudflare pages local build cache (anywhere in tree)
+.wrangler/
 site/dist/
