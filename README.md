@@ -178,4 +178,4 @@ const result = await client.call(Server.COMPANY, "get_company_by_query", {
 
 # License
 
-MIT.
+Apache-2.0(见 [LICENSE](./LICENSE))。
