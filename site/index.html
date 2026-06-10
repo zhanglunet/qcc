@@ -259,61 +259,6 @@ section{padding:80px 24px;}
   .arch-layer-num{font-size:22px;}
 }
 
-/* ============ Article ============ */
-#article{background:#ebe4d2;}
-.article-wrap{
-  max-width:760px;margin:0 auto;
-  background:#f5f1e8;
-  padding:60px 56px;
-  border:1px solid #d4ccb7;
-}
-@media(max-width:680px){.article-wrap{padding:40px 24px;}}
-.article-wrap h2{
-  font-family:Georgia,"Songti SC",serif;
-  font-size:28px;color:#1a3d2e;
-  margin:48px 0 18px;
-  padding-bottom:10px;
-  border-bottom:1px solid #d4ccb7;
-  font-weight:700;line-height:1.3;
-}
-.article-wrap h2:first-child{margin-top:0;}
-.article-wrap h3{
-  font-size:18px;color:#1a3d2e;
-  margin:32px 0 14px;font-weight:700;
-}
-.article-wrap p{margin:14px 0;color:#3a3a36;}
-.article-wrap ul,.article-wrap ol{padding-left:24px;margin:14px 0;}
-.article-wrap li{margin:8px 0;color:#3a3a36;}
-.article-wrap code{
-  background:#ebe4d2;color:#8a3a26;
-  padding:2px 7px;font-size:13px;border-radius:2px;
-}
-.article-wrap pre{
-  background:#1a1f1d;color:#d4d0c4;
-  padding:18px 22px;margin:18px 0;
-  font-size:13px;line-height:1.65;
-  border-radius:2px;overflow-x:auto;
-}
-.article-wrap pre code{background:none;color:inherit;padding:0;}
-.article-wrap blockquote{
-  margin:18px 0;padding:14px 18px;
-  background:#fff8e8;
-  border-left:3px solid #e8b04a;
-  color:#6a5828;font-size:14px;
-}
-.article-wrap strong{color:#1a3d2e;font-weight:700;}
-.article-wrap a{color:#c8523a;border-bottom:1px solid #c8523a;}
-.article-wrap table{
-  width:100%;border-collapse:collapse;margin:18px 0;
-  font-size:13px;
-}
-.article-wrap th{
-  background:#1a3d2e;color:#f5f1e8;
-  padding:10px 12px;text-align:left;font-weight:600;
-}
-.article-wrap td{padding:10px 12px;border-bottom:1px solid #d4ccb7;}
-.article-wrap tr:nth-child(even) td{background:#ebe4d2;}
-
 /* ============ Disclaimer ============ */
 #disclaimer{background:#f5f1e8;border-top:1px solid #d4ccb7;}
 .disclaimer-wrap{
@@ -395,7 +340,7 @@ footer{
       <a href="#skills">8 个 Skill</a>
       <a href="#runtimes">4 种接入</a>
       <a href="#arch">架构</a>
-      <a href="#article">背景文章</a>
+      <a href="/article.html">背景文章</a>
       <a href="#disclaimer" style="color:#c8523a;">⚠ 免责</a>
       <a href="https://github.com/zhanglunet/qcc" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
@@ -664,97 +609,6 @@ result = <span class="kw">await</span> client.call(
         <div class="arch-layer-name">MCP Streamable HTTP</div>
         <div class="arch-layer-desc">agent.qcc.com/mcp/&lt;server&gt;/stream，Bearer token 鉴权。直接对话上游 6 个 server。</div>
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ Article ============ -->
-<section id="article">
-  <div class="section-inner">
-    <div class="article-wrap">
-
-<h2>缘起：为什么要做这件事</h2>
-<p>做客户准入、供应商入库、投后监控时，绕不开三件事：</p>
-<ul>
-<li><strong>KYB（Know Your Business）</strong>：合同主体真伪、注册资本实缴、法代是谁</li>
-<li><strong>司法风险</strong>：被执行、失信、限消、限出境、行政处罚</li>
-<li><strong>关联版图</strong>：实控人是谁、UBO 穿透到自然人、关键人对外控制了多少家公司</li>
-</ul>
-<p>这三件事手工查可以，但有两个问题：<strong>慢</strong>（一家公司散在十几个页面，复制粘贴半小时）、<strong>断</strong>（信息进不了 Agent 编排，AI 用不上）。所以目标变成：<strong>把企查查 146 个查询点变成 AI Agent 原生可调用的工具集</strong>。</p>
-
-<h2>选型：四条路只剩一条</h2>
-<table>
-<thead><tr><th>选项</th><th>状态</th><th>否决理由</th></tr></thead>
-<tbody>
-<tr><td>Aily</td><td>❌</td><td>不开放 API 直连，只能在 Aily 自己产品里用</td></tr>
-<tr><td>OpenClaw 内置</td><td>❌</td><td>当时不稳定，工具粒度不可控</td></tr>
-<tr><td>QCC 企业 REST API</td><td>⏸️</td><td>3 元/次，量起来贵；需走采购</td></tr>
-<tr><td><strong>QCC Agent MCP</strong></td><td>✅</td><td>免费 tier + 日配额、Streamable HTTP、6 个 server 全覆盖</td></tr>
-</tbody>
-</table>
-
-<h2>上游长这样：6 server / 146 tool</h2>
-<p>QCC 把数据按业务域切成了 6 个独立的 MCP server，挂在 <code>https://agent.qcc.com/mcp/&lt;server&gt;/stream</code>，Bearer token 鉴权：</p>
-<table>
-<thead><tr><th>server</th><th>tool 数</th><th>覆盖</th></tr></thead>
-<tbody>
-<tr><td><code>company</code></td><td>16</td><td>工商、股东、UBO、对外投资、年报、财务、分支、上市</td></tr>
-<tr><td><code>risk</code></td><td>35</td><td>司法、失信、限消限出、经营异常、严重违法、行政处罚、税务、破产、抵质押</td></tr>
-<tr><td><code>ipr</code></td><td>18</td><td>专利、商标、著作权、数字资产、自媒体矩阵</td></tr>
-<tr><td><code>operation</code></td><td>35</td><td>资质、招投标、招聘、融资、舆情、公告、政府约谈、抽检、召回</td></tr>
-<tr><td><code>executive</code></td><td>42</td><td>法代/高管个人背调（双参数 USCC + 人名）</td></tr>
-<tr><td><code>history</code></td><td>—</td><td>企业历史轨迹（需企业实名认证）</td></tr>
-</tbody>
-</table>
-
-<h2>5 分钟跑通</h2>
-<pre><code># 1) 配 key
-git clone https://github.com/zhanglunet/qcc &amp;&amp; cd qcc
-cp .env.example .env
-# 编辑 .env，填 QCC_API_KEY（裸 token，不带 Bearer 前缀）
-
-# 2) 装 Python 客户端 + skills 额外依赖
-cd python &amp;&amp; python3.10 -m venv .venv &amp;&amp; source .venv/bin/activate
-pip install -e ".[skills]"
-
-# 3) 跑 qcc-person-portfolio
-python ../skills/qcc-person-portfolio/run.py \
-  --person "雷军" \
-  --anchor-by-name "小米科技"
-# → ./雷军_companies.xlsx，8 sheet，约 200 家关联公司
-</code></pre>
-
-<h2>四条铁律</h2>
-<h3>1. 锚定先行</h3>
-<p>用户给非 USCC 时，<strong>第一步永远是</strong> <code>qcc-company:get_company_by_query</code>。返回多候选时<strong>必须让用户选</strong>，禁止自动取 top1——QCC 自己的工具描述里就明令禁止了。</p>
-<blockquote><strong>真实违规案例</strong>：用户输入"腾讯科技最新工商变更"，AI 自动补全成"腾讯科技深圳有限公司"调下游，命中的是"腾讯科技（深圳）有限公司"（外资子公司），而非真正想要的运营主体。</blockquote>
-
-<h3>2. USCC 优先</h3>
-<p>锚定拿到 18 位统一社会信用代码后，<strong>所有下游调用都用 USCC 作 searchKey</strong>，不要再把原始企业名往下传。</p>
-
-<h3>3. executive server 双参数</h3>
-<p><code>qcc-executive</code> 工具组例外：必须同时提供 <code>searchKey</code>（USCC）+ <code>personName</code>（姓名）——双锚定避免同名误查。</p>
-
-<h3>4. 配额错误码</h3>
-<ul>
-<li><code>200001</code> — 鉴权格式错（检查是不是带了 Bearer 前缀）</li>
-<li><code>300008</code> — 配额超 / 风控触发</li>
-<li><code>-32001</code> — 日频率超限</li>
-</ul>
-
-<h2>已知限制</h2>
-<ul>
-<li><strong><code>history</code> server 不能用</strong>：需企业实名认证</li>
-<li><strong><code>_inventory.json</code> 会漂移</strong>：每月跑一次 dump_inventory 保持同步</li>
-<li><strong>单体 OpCo 财务字段大量"企业选择不公示"</strong>：上市集团合并数据需另查港交所 / SEC</li>
-<li><strong>境外主体不在内</strong>：开曼 / VIE 主体不在 QCC 工商数据</li>
-</ul>
-
-<h2>写在最后</h2>
-<p>整个项目的核心判断只有一个：<strong>AI Agent 时代，数据源接入的颗粒度不是"API"也不是"工具"，而是"工作流"</strong>。</p>
-<p>8 个 skill 看似只是把 146 个 tool 重新打包，但真正的价值在于把"用户一次尽调动作"沉淀成可复用、可触发、可被任意 Agent 框架消费的最小单元。Claude Code 拿去做对话式尽调，OpenClaw 拿去做 IM 侧助手，Hermes 拿去做服务端编排，Python 脚本拿去做批量导出——<strong>同一份 skill 目录，四个运行时无缝复用</strong>。</p>
-<p>仓库地址：<a href="https://github.com/zhanglunet/qcc" target="_blank" rel="noopener">github.com/zhanglunet/qcc</a></p>
-
     </div>
   </div>
 </section>
